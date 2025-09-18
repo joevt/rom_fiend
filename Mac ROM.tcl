@@ -1830,6 +1830,7 @@ if {$dir_start != 0} {
 
 		if {[universal_rom $machine]} {
 			section "Resources"
+			sectioncollapse
 			section "Metadata"
 			sectioncollapse
 			goto 0x1A
@@ -1891,6 +1892,7 @@ if {$dir_start != 0} {
 			#  == 28
 			move 28
 			section "Resources"
+			sectioncollapse
 			section "Metadata"
 			sectioncollapse
 			set typelist_offset [uint16 "Type List Offset"]
