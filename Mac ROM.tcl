@@ -760,7 +760,7 @@ proc driver_dir {offset} {
 
 			section "Functions"
 			# The driver functions can appear in any order, or be omitted entirely (offset == 0), so to determine the size of each function block (approximately)
-			# we have to sort all the offsets to determine the order of the function calls, 
+			# we have to sort all the offsets to determine the order of the function calls,
 			set offset_dict [dict create "Open" $open_offset "Prime" $prime_offset "Control" $control_offset "Status" $status_offset "Close" $close_offset]
 			set sorted_offsets [sort_dict_by_int_value $offset_dict]
 			set current_offset 0
@@ -1164,7 +1164,7 @@ proc parse_rsrc_dir {directory} {
 		set ctype 0
 		set drSW 0
 		set rsrc_name ""
-		
+
 		section "Metadata"
 		sectioncollapse
 		set rsrc_type [uint8 "Type"]
