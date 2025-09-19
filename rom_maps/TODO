@@ -1,10 +1,7 @@
-The following ROMs are missing, despite symbol tables:
-
-Multiple ROM versions, unclear which matches
---------------------------------------------
-MacIIROM.lst.txt
-MacSEROM.lst.txt
-
-Duplicate
+ROM notes
 ---------
-PB140ROM.lst.txt -- This is the same as the Quadra 700 ROM, so it is used for this checksum.
+- "MacPlusROM.lst.txt" is used by three ROMs "4D1EEEE1 - MacPlus v1", "4D1EEAE1 - MacPlus v2", and "4D1F8172 - MacPlus v3".
+- "MacIIROM.lst.txt" is used by two ROMs "9779D2C4 - MacII (800k v2)" and "97851DB6 - MacII (800k v1)" because they have few differences.
+- "MacSEROM.lst.txt" is used by two ROMs "B2E362A8 - Mac SE" and "B306E171 - Mac SE FDHD" because mostly only the ".Sony" driver differs.
+- "MacLCIIIROM.lst.txt" is used by two ROMs "EC904829 - Mac LC III (older)" and "ECBBC41C - Mac LC III".
+- "PB140ROM.lst.txt" and "Quadra700ROM.lst.txt" are identical because the PowerBook 140 and the Quadra 700 use the same ROM "420DBFF3 - Quadra 700&900 & PB140&170".
