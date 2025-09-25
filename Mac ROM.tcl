@@ -1625,10 +1625,11 @@ if {$extended_magic == 0x5A932BC7} {
 	set superdir_start [expr $end_of_rom - 32 + $offset]
 	move -3
 	entry "(Computed Directory Start)" $superdir_start 3
-	move -4
+	move -5
 
 	section -collapsed "SuperInit"
 	section -collapsed "Metadata"
+	set rsrc_type [uint8 "Type"]
 	set offset [int24 "Offset"]
 	endsection
 	exec_block [expr $offset-4]
