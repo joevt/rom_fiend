@@ -1670,7 +1670,7 @@ if {$dir_start != 0} {
 		# TODO: This is a guess, we know the early Twiggy ROMs with a different reset vector don't have a checksum
 		if {$data == 0x2A} {
 			set checksum [uint32 -hex "Checksum"]
-			set hex_checksum [format %x $checksum]
+			set hex_checksum [format %08X $checksum]
 		} else {
 			set hex_checksum "none"
 			move 4
