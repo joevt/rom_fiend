@@ -1531,10 +1531,9 @@ proc parse_rsrc_dir {directory} {
 set dir_start -1
 
 if {$magic == 0x5A932BC7} {
-	section -collapsed "DeclROM"
-
 	# Jump to the end where the header is
 	goto $end_of_rom
+	section -collapsed "DeclROM"
 
 	# Step backwards through the header
 	move -1
