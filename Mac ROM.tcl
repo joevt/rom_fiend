@@ -1758,7 +1758,6 @@ if {$dir_start != 0} {
 
 			goto 0x40
 			set rom_size [uint32 "ROM Size"]
-
 		}
 
 		set filename "rom_maps/$hex_checksum"
