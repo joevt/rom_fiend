@@ -671,8 +671,7 @@ proc vendor_info {offset} {
 	set vendor_rsrc_offset 0x01
 	set vendor_rsrc_type 0x00
 	while {[expr $vendor_rsrc_offset != 0x000000 && $vendor_rsrc_type != 0xFF]} {
-		section "Metadata"
-		sectioncollapse
+		section -collapsed "Metadata"
 		set vendor_rsrc_type [uint8 "Type"]
 		set vendor_rsrc_offset [int24 "Offset"]
 		endsection
@@ -738,8 +737,7 @@ proc driver_dir {offset} {
 			# TODO: Assuming we subtract 4 because the length includes the header where the length is specified
 			#bytes [expr $driver_length-4] "Driver Data"
 			section "Driver Data"
-			section "Header"
-			sectioncollapse
+			section -collapsed "Header"
 			set driver_region_start [pos]
 			uint16 "drvrFlags"
 			uint16 "drvrDelay"
@@ -818,8 +816,7 @@ proc gamma_dir {offset} {
 	set gamma_rsrc_offset 0x01
 	set gamma_rsrc_type 0x00
 	while {[expr $gamma_rsrc_offset != 0x000000 && $gamma_rsrc_type != 0xFF]} {
-		section "Gamma Entry"
-		sectioncollapse
+		section -collapsed "Gamma Entry"
 		set gamma_rsrc_type [uint8 "Type"]
 		set gamma_rsrc_offset [int24 "Offset"]
 		if {$gamma_rsrc_type == 0xFF} {
@@ -849,8 +846,7 @@ proc svidparam_dir {offset} {
 	set svidparam_rsrc_offset 0x01
 	set svidparam_rsrc_type 0x00
 	while {[expr $svidparam_rsrc_offset != 0x000000 && $svidparam_rsrc_type != 0xFF]} {
-		section "Vid Param"
-		sectioncollapse
+		section -collapsed "Vid Param"
 		set svidparam_rsrc_type [uint8 "Type"]
 		sectionname "Video Mode $svidparam_rsrc_type"
 		set svidparam_rsrc_offset [int24 "Offset"]
@@ -874,8 +870,7 @@ proc smemory {offset} {
 	set smemory_rsrc_offset 0x01
 	set smemory_rsrc_type 0x00
 	while {[expr $smemory_rsrc_offset != 0x000000 && $smemory_rsrc_type != 0xFF]} {
-		section "sMemory Entry"
-		sectioncollapse
+		section -collapsed "sMemory Entry"
 		set smemory_rsrc_type [uint8 "Type"]
 		set smemory_rsrc_offset [int24 "Offset"]
 		switch $smemory_rsrc_type {
@@ -960,8 +955,7 @@ proc vid_names {offset} {
 	set vid_names_rsrc_offset 0x01
 	set vid_names_rsrc_type 0x00
 	while {[expr $vid_names_rsrc_offset != 0x000000 && $vid_names_rsrc_type != 0xFF]} {
-		section "Video Mode"
-		sectioncollapse
+		section -collapsed "Video Mode"
 		set vid_names_rsrc_type [uint8 "Type"]
 		set vid_names_rsrc_offset [int24 "Offset"]
 		# TODO: Does this mean something else?
@@ -991,8 +985,7 @@ proc vid_mode {offset} {
 	set vid_mode_rsrc_offset 0x01
 	set vid_mode_rsrc_type 0x00
 	while {[expr $vid_mode_rsrc_offset != 0x000000 && $vid_mode_rsrc_type != 0xFF]} {
-		section "Metadata"
-		sectioncollapse
+		section -collapsed "Metadata"
 		set vid_mode_rsrc_type [uint8 "Type"]
 		set vid_mode_rsrc_offset [int24 "Offset"]
 		set vid_mode_rsrc_entry_return [pos]
@@ -1089,10 +1082,8 @@ proc vid_aux_params {offset} {
 	set vid_aux_params_rsrc_offset 0x01
 	set vid_aux_params_rsrc_type 0x00
 	while {[expr $vid_aux_params_rsrc_offset != 0x000000 && $vid_aux_params_rsrc_type != 0xFF]} {
-		section "Mode"
-		sectioncollapse
-		section "Metadata"
-		sectioncollapse
+		section -collapsed "Mode"
+		section -collapsed "Metadata"
 		set vid_aux_params_rsrc_type [uint8 "Type"]
 		set vid_aux_params_rsrc_offset [int24 "Offset"]
 		endsection
@@ -1155,8 +1146,7 @@ proc parse_rsrc_dir {directory} {
 
 	# Loop over the top level sResource entries
 	while {[expr $rsrc_offset != 0x000000 && $rsrc_type != 0xFF]} {
-		section "sResource"
-		sectioncollapse
+		section -collapsed "sResource"
 
 		# These will be filed in by the type record, which is usually first
 		# TODO: If it's not before the video entries, we won't parse them correctly
@@ -1165,8 +1155,7 @@ proc parse_rsrc_dir {directory} {
 		set drSW 0
 		set rsrc_name ""
 
-		section "Metadata"
-		sectioncollapse
+		section -collapsed "Metadata"
 		set rsrc_type [uint8 "Type"]
 		set rsrc_offset [int24 "Offset"]
 		endsection
@@ -1182,12 +1171,10 @@ proc parse_rsrc_dir {directory} {
 
 			# Loop over the sResources in this entry
 			while {[expr $sub_rsrc_offset != 0x000000 && $sub_rsrc_type != 0xFF]} {
-				section "sRsrc"
-				sectioncollapse
-				section "Metadata"
+				section -collapsed "sRsrc"
+				section -collapsed "Metadata"
 				set sub_rsrc_type [uint8 "Type"]
 				set sub_rsrc_offset [int24 "Offset/Raw Data"]
-				sectioncollapse
 				endsection
 				set reset_location [pos]
 				move -4
@@ -1544,8 +1531,7 @@ proc parse_rsrc_dir {directory} {
 set dir_start -1
 
 if {$magic == 0x5A932BC7} {
-	section "DeclROM"
-	sectioncollapse
+	section -collapsed "DeclROM"
 
 	# Jump to the end where the header is
 	goto $end_of_rom
@@ -1585,8 +1571,7 @@ if {$magic == 0x5A932BC7} {
 goto [expr $end_of_rom-24]
 set extended_magic [uint32]
 if {$extended_magic == 0x5A932BC7} {
-	section "Extended DeclROM"
-	sectioncollapse
+	section -collapsed "Extended DeclROM"
 	move -4
 	hex 4 "TestPattern"
 	move -11
@@ -1596,10 +1581,8 @@ if {$extended_magic == 0x5A932BC7} {
 	entry "(Computed Directory Start)" $superdir_start 3
 	move -4
 
-	section "SuperInit"
-	sectioncollapse
-	section "Metadata"
-	sectioncollapse
+	section -collapsed "SuperInit"
+	section -collapsed "Metadata"
 	set offset [int24 "Offset"]
 	endsection
 	exec_block [expr $offset-4]
@@ -1613,8 +1596,7 @@ if {$extended_magic == 0x5A932BC7} {
 	while {[expr $rsrc_offset != 0x000000 && $rsrc_type != 0xFF]} {
 		section "sRsrcDir"
 
-		section "Metadata"
-		sectioncollapse
+		section -collapsed "Metadata"
 		set rsrc_type [uint8 "Type"]
 		set rsrc_offset [int24 "Offset"]
 		endsection
@@ -1664,8 +1646,7 @@ if {$dir_start != 0} {
 	set data [uint16]
 	if {$data == 0x2A || $data == 0x16} {
 		goto 0
-		section "System ROM"
-		sectioncollapse
+		section -collapsed "System ROM"
 
 		# TODO: This is a guess, we know the early Twiggy ROMs with a different reset vector don't have a checksum
 		if {$data == 0x2A} {
@@ -1731,8 +1712,7 @@ if {$dir_start != 0} {
 
 		# TODO: Determine how to read pre-Universal ROM headers
 		if {[universal_rom $machine]} {
-			section "Extended Metadata (Experimental)"
-			sectioncollapse
+			section -collapsed "Extended Metadata (Experimental)"
 			goto 10
 			jmp "Start Boot Vector"
 			jmp "Bad Disk Vector"
@@ -1762,8 +1742,7 @@ if {$dir_start != 0} {
 
 		set filename "rom_maps/$hex_checksum"
 		if { [file exists $filename] == 1 } {
-			section "Symbols"
-			sectioncollapse
+			section -collapsed "Symbols"
 			set map [open $filename "r"]
 			set lines [split [read $map] "\n"]
 			close $map
@@ -1781,10 +1760,8 @@ if {$dir_start != 0} {
 		}
 
 		if {[universal_rom $machine]} {
-			section "Resources"
-			sectioncollapse
-			section "Metadata"
-			sectioncollapse
+			section -collapsed "Resources"
+			section -collapsed "Metadata"
 			goto 0x1A
 			set rsrc_offset [uint32 "Resource Offset"]
 			# Unlike DeclROM portions, this is an offset from the base
@@ -1798,8 +1775,7 @@ if {$dir_start != 0} {
 
 			while {$next != 0} {
 				goto $next
-				section "Resource"
-				sectioncollapse
+				section -collapsed "Resource"
 				set combo_data [hex $combo_size]
 				move -$combo_size
 				entry "Combo Mask" [combos $combo_data] $combo_size
@@ -1843,19 +1819,15 @@ if {$dir_start != 0} {
 			#  Thus we have the length, then a copy of the resource header (16), 6 reserved bytes, then our offsets
 			#  == 28
 			move 28
-			section "Resources"
-			sectioncollapse
-			section "Metadata"
-			sectioncollapse
+			section -collapsed "Resources"
+			section -collapsed "Metadata"
 			set typelist_offset [uint16 "Type List Offset"]
 			set namelist_offset [uint16 "Name List Offset"]
 			set num [uint16 "Num Types"]
 			endsection
 			for {set i 0} {$i <= $num} {incr i} {
-				section "Resource"
-				sectioncollapse
-				section "Metadata"
-				sectioncollapse
+				section -collapsed "Resource"
+				section -collapsed "Metadata"
 				set type [ascii 4 "Type"]
 				set num_resources [uint16 "Num Resources (0 indexed)"]
 				set list_offset [uint16 "List Offset"]
@@ -1864,8 +1836,7 @@ if {$dir_start != 0} {
 				set cur_pos [pos]
 				goto [expr $resource_data_offset + $typelist_offset + $list_offset + 4]
 				for {set j 0} {$j <= $num_resources} {incr j} {
-					section "Resource"
-					sectioncollapse
+					section -collapsed "Resource"
 					set id [uint16 "ID"]
 					set name_offset [uint16 "Name Offset"]
 					sectionname "$type ($id)"
@@ -1922,16 +1893,14 @@ if {$dir_start != 0} {
 
 		if {$edisk_type != ""} {
 			if {$edisk_type == "edisk"} {
-				section "EDisk ($edisk_count)"
+				section -collapsed "EDisk ($edisk_count)"
 			} else {
-				section "EDisk (Ginty) ($edisk_count)"
+				section -collapsed "EDisk (Ginty) ($edisk_count)"
 			}
-			sectioncollapse
 
 			goto $edisk_offset
 
-			section "Metadata"
-			sectioncollapse
+			section -collapsed "Metadata"
 			bytes 128 "Scratch Space"
 			uint16 "Block Size"
 			uint16 "Version"
@@ -1985,8 +1954,7 @@ if {$dir_start != 0} {
 		set hfs_magic [uint16]
 		if {$hfs_magic == 0x4C4B} {
 			move -2
-			section "bbraun/BMOW Rom Disk"
-			sectioncollapse
+			section -collapsed "bbraun/BMOW Rom Disk"
 			bytes eof "Disk Image (Approximate)"
 			endsection
 		}
