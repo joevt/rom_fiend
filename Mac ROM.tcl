@@ -1807,9 +1807,9 @@ if {$dir_start != 0} {
 		}
 
 		if {[universal_rom $machine]} {
+			goto 0x1A
 			section -collapsed "Resources"
 			section -collapsed "Metadata"
-			goto 0x1A
 			set rsrc_offset [uint32 "Resource Offset"]
 			# Unlike DeclROM portions, this is an offset from the base
 			goto $rsrc_offset
