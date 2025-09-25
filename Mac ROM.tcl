@@ -1705,7 +1705,27 @@ if {$dir_start != 0} {
 			move 4
 		}
 
-		move 4
+		set filename "rom_maps/$hex_checksum"
+		if { [file exists $filename] == 1 } {
+			goto 0
+			section -collapsed "Symbols"
+			set map [open $filename "r"]
+			set lines [split [read $map] "\n"]
+			close $map
+			foreach line $lines {
+				# Skip empty lines
+				if {$line == ""} {
+					continue
+				}
+				regexp -- {^(.+?) (0x[0-9A-Fa-f]+) l$} $line -> name str_offset
+				scan $str_offset %x raw_offset
+				goto $raw_offset
+				entry $name [format "0x%X" $raw_offset] 1
+			}
+			endsection
+		}
+
+		goto 8
 		section "Versions"
 		# TODO: Also format in the $XXXX format used in some places
 		set machine [uint8 "Machine"]
@@ -1786,25 +1806,6 @@ if {$dir_start != 0} {
 
 			goto 0x40
 			set rom_size [uint32 "ROM Size"]
-		}
-
-		set filename "rom_maps/$hex_checksum"
-		if { [file exists $filename] == 1 } {
-			section -collapsed "Symbols"
-			set map [open $filename "r"]
-			set lines [split [read $map] "\n"]
-			close $map
-			foreach line $lines {
-				# Skip empty lines
-				if {$line == ""} {
-					continue
-				}
-				regexp -- {^(.+?) (0x[0-9A-Fa-f]+) l$} $line -> name str_offset
-				scan $str_offset %x raw_offset
-				goto $raw_offset
-				entry $name [format "0x%X" $raw_offset] 1
-			}
-			endsection
 		}
 
 		if {[universal_rom $machine]} {
