@@ -4669,7 +4669,32 @@ if {$dir_start != 0} {
 			move 2
 			uint8 "Patch Flags"
 			move 1
-			uint32 "Foreign OS Vector Table"
+			set ForeignOS [offset32section "Foreign OS Vector Table" 0]
+			if {$ForeignOS != 0} {
+				goto $ForeignOS
+				offset32code "Initializes A-trap dispatch tables" 0
+				offset32code "A-trap dispatcher" 0
+				offset32code "Handler for unimplemented traps" 0
+				offset32code "Initializes the Slot Manager" 0
+				offset32code "Initializes the Memory Manager jump tables" 0
+				offset32code "MMU switch code" 0
+				set InitRomVectors [offset32section "InitRomVectors" 0]
+				if {$InitRomVectors != 0} {
+					goto $InitRomVectors
+					set vector_num 0
+					while {1} {
+						set instruction [uint16]
+						if {$instruction != 0x61FF} {
+							break
+						}
+						move -2
+						jmp [format "Vector %d" $vector_num]
+						incr vector_num
+					}
+					endsection
+				}
+				endsection
+			}
 		}
 
 		# Both ROM eras support resource data offset
