@@ -4655,6 +4655,7 @@ if {$dir_start != 0} {
 
 		goto 0
 		section -collapsed "ROM Header"
+		sectionvalue [offsetname 0]
 
 		goto 4
 		# TODO: Display the reset vector value
