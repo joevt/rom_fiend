@@ -3341,7 +3341,62 @@ if {$dir_start != 0} {
 		if {[universal_rom $machine]} {
 			goto 0x1e
 			jmp "Eject Vector"
-			uint32 "Dispatch Table Offset"
+		}
+
+		if {
+			[universal_rom $machine] || (
+				[dict exists $symbolsdict 34] &&
+				[dict get $symbolsdict 34] == "DISPOFF"
+			)
+		} {
+			goto 0x22
+			set DispTable [offset32section "Dispatch Table" 0]
+			if {$DispTable != 0} {
+				goto $DispTable
+
+				sectioncollapse
+				section -collapsed "ToolBox" {
+					for {set i 0} {$i <= 0x3FF} {incr i} {
+						set addr [offset32code [format "ToolBox $%03X" $i] 0]
+						if {$addr < 0 || $addr >= [len]} {
+							sectionname "ToolBox (invalid)"
+							break
+						}
+					}
+				}
+
+				set osnum ""
+				for {set os 0} {$os <= 1} {incr os} {
+					goto [expr $DispTable + (0x400 + $os * 0x100) * 4]
+					section -collapsed "OS$osnum" {
+						for {set i 0} {$i <= 0xAE} {incr i} {
+							set addr [offset32code [format "OS%s $%02X" $osnum $i] 0]
+							if {$addr < 0 || $addr >= [len]} {
+								sectionname "OS$osnum (invalid)"
+								break
+							}
+						}
+					}
+
+					goto [expr $DispTable + (0x400 + $os * 0x100 + 0xAF) * 4]
+					section -collapsed "Vectors$osnum" {
+						for {set i 0xAF} {$i <= 0xFF} {incr i} {
+							set addr [offset32code [format "OS%s $%02X" $osnum $i] 0]
+							if {$addr < 0 || $addr >= [len]} {
+								sectionname "Vectors$osnum (invalid)"
+								break
+							}
+						}
+					}
+					set osnum "2"
+				}
+
+				endsection
+			}
+		}
+
+		if {[universal_rom $machine]} {
+			goto 0x26
 			jmp "Critical Error Vector"
 			jmp "Reset Vector"
 			uint8 "ROM Location Bit"
