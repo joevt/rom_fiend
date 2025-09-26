@@ -63,6 +63,109 @@ set rom_date -1
 
 ## Utility functions
 
+set symbolsdict [dict create]
+
+proc field_name_and_symbol {prefix addr} {
+	global symbolsdict
+	if {[dict exists $symbolsdict $addr]} {
+		return [format "%s (%s)" $prefix [dict get $symbolsdict $addr]]
+	} else {
+		return $prefix
+	}
+}
+
+proc offsetname {addr} {
+	return [field_name_and_symbol [format "-> 0x%X" $addr] $addr]
+}
+
+proc pointerentry {name addr size} {
+	entry $name [offsetname $addr] $size
+	move $size
+}
+
+proc codeentry {name addr size} {
+	if {$addr < 0 || $addr >= [len]} {
+		pointerentry $name $addr $size
+	} else {
+		section -collapsed $name
+			sectionvalue [offsetname $addr]
+			pointerentry $name $addr $size
+			set returnpos [pos]
+			goto $addr
+			if {$addr > 0 && $addr < [len]} {
+				bytes 2 "$name start"
+			}
+		endsection
+		goto $returnpos
+	}
+}
+
+proc dooffset {name origin size offset} {
+	set addr $offset
+	if {$offset != 0} {
+		set addr [expr $origin + $offset]
+		move -$size
+		pointerentry $name $addr $size
+	}
+	return $addr
+}
+
+proc offset32 {name origin} {
+	return [dooffset $name $origin 4 [int32]]
+}
+
+proc offset24 {name origin} {
+	return [dooffset $name $origin 3 [int24]]
+}
+
+proc dooffsetcode {name origin size offset} {
+	set addr $offset
+	if {$offset != 0} {
+		set addr [expr $origin + $offset]
+		move -$size
+		codeentry $name $addr $size
+	}
+	return $addr
+}
+
+proc offset32code {name origin} {
+	if {[pos] <= [len] - 4} {
+		return [dooffsetcode $name $origin 4 [int32]]
+	}
+	return 0
+}
+
+proc dooffsetsection {name origin size offset} {
+	set addr $offset
+	if {$offset != 0} {
+		set addr [expr $origin + $offset]
+		if {$addr > 0 && $addr < [len]} {
+			move -$size
+			section -collapsed $name
+			sectionvalue [offsetname $addr]
+			pointerentry "$name offset" $addr $size
+			return $addr
+		}
+	}
+	return 0
+}
+
+proc offset32section {name origin} {
+	set offset [uint32]
+	if {($origin == 0) && (
+		(($offset & 0xFFF00000) == 0x40800000) || (($offset & 0xFFF00000) == 0x400000)
+	)} {
+		return [dooffsetsection $name 0 4 [expr $offset & 0xFFFFF]]
+	} else {
+		move -4
+		return [dooffsetsection $name $origin 4 [int32]]
+	}
+}
+
+proc offset24section {name origin} {
+	return [dooffsetsection $name $origin 3 [int24]]
+}
+
 # Add support for int24s
 # TODO: A better way? Ultimately we want an int24 and HexFiend only supports uint24
 # TODO: Support -hex
@@ -1524,6 +1627,1473 @@ proc parse_rsrc_dir {directory} {
 	}
 }
 
+#### Universal Tables parser
+
+proc product_pa6pb3 {input} {
+	if { 0 } {
+	} elseif { $input == 0x00000000 } { set result "Mac IIx"
+	} elseif { $input == 0x00000008 } { set result "Mac II"
+	} elseif { $input == 0x40000000 } { set result "Mac SE/30"
+	} elseif { $input == 0x40000008 } { set result "Mac IIcx"
+	} else {
+		set result [format "Unknown (0x%X)" $input]
+	}
+	return $result
+}
+
+proc product_via_pa6421 {input} {
+	if { 0 } {
+	} elseif { $input == 0x00000000 } { set result "PowerBook 150"
+	} elseif { $input == 0x02000000 } { set result "Color Classic"
+	} elseif { $input == 0x04000000 } { set result "Unused"
+	} elseif { $input == 0x06000000 } { set result "Unreleased MDU-using SE/30 Successor"
+	} elseif { $input == 0x10000000 } { set result "Quadra 950"
+	} elseif { $input == 0x12000000 } { set result "PowerBook 140/170, Classic II, Quadra 800"
+	} elseif { $input == 0x14000000 } { set result "Used, unknown machine"
+	} elseif { $input == 0x16000000 } { set result "Mac IIsi"
+	} elseif { $input == 0x40000000 } { set result "Quadra 700, Centris 610"
+	} elseif { $input == 0x42000000 } { set result "Unreleased 20Mhz 650"
+	} elseif { $input == 0x44000000 } { set result "Quadra 610"
+	} elseif { $input == 0x46000000 } { set result "Mac IIci, Centris (25Mhz) 650"
+	} elseif { $input == 0x50000000 } { set result "Quadra 900"
+	} elseif { $input == 0x52000000 } { set result "Mac IIfx, Quadra (33Mhz) 650"
+	} elseif { $input == 0x54000000 } { set result "Mac LC, LC2, IIvx, IIvi"
+	} elseif { $input == 0x56000000 } { set result "Mac IIci w/PGC"
+	} else {
+		set result [format "Unknown (0x%X)" $input]
+	}
+	return $result
+}
+
+proc productinfo_name {boxnumber DecoderKind viamask viaid cpuid} {
+	if { 0 } {
+	} elseif { $boxnumber ==  14 } { set result "InfoQuadra900"
+	} elseif { $boxnumber ==  15 } { set result "InfoPowerBook170"
+	} elseif { $boxnumber ==  16 } { set result "InfoQuadra700"
+	} elseif { $boxnumber ==  20 } { set result "InfoQuadra950"
+	} elseif { $boxnumber ==  21 } { set result "InfoLCIII"
+	} elseif { $boxnumber ==  23 } { set result "InfoPowerBookDuo210"
+	} elseif { $boxnumber ==  24 } { set result "InfoCentris650"
+	} elseif { $boxnumber ==  26 } { set result "InfoPowerBookDuo230"
+	} elseif { $boxnumber ==  27 } { set result "InfoPowerBook180"
+	} elseif { $boxnumber ==  29 } { set result "InfoQuadra800"
+	} elseif { $boxnumber ==  30 } { set result "InfoQuadra650"
+	} elseif { $boxnumber ==  31 } { set result "InfoMacLC"
+	} elseif { $boxnumber ==  32 } { set result "InfoPowerBookDuo235"
+	} elseif { $boxnumber ==  34 } { set result "InfoVail16"
+	} elseif { $boxnumber ==  37 } { set result "InfoCyclone33"
+	} elseif { $boxnumber ==  45 } { set result "InfoWombat40"
+	} elseif { $boxnumber ==  46 } { set result "InfoCentris610"
+	} elseif { $boxnumber ==  47 } { set result "InfoQuadra610"
+	} elseif { $boxnumber ==  52 } { set result "InfoWombat20"
+	} elseif { $boxnumber ==  53 } { set result "InfoWombat40F"
+	} elseif { $boxnumber ==  54 } { set result "InfoCentris660AV"
+	} elseif { $boxnumber ==  55 && $cpuid == 0x3235 } { set result "InfoRiscQuadra700"
+	} elseif { $boxnumber ==  56 } { set result "InfoVail33"
+	} elseif { $boxnumber ==  57 } { set result "InfoWLCD33"
+	} elseif { $boxnumber ==  58 } { set result "InfoPDMcoldFusion"
+	} elseif { $boxnumber ==  61 } { set result "InfoTNTProto1"
+	} elseif { $boxnumber ==  66 } { set result "InfoBlackbird"
+	} elseif { $boxnumber ==  69 } { set result "InfoPDM"
+	} elseif { $boxnumber ==  72 } { set result "InfoQuadra840AV"
+	} elseif { $boxnumber ==  73 } { set result "InfoTempest33"
+	} elseif { $boxnumber ==  76 && $cpuid == 0x3200} { set result "InfoRiscCentris650"
+	} elseif { $boxnumber ==  76 && $cpuid == 0x3201} { set result "InfoRiscQuadra800"
+	} elseif { $boxnumber ==  76 && $cpuid == 0x3202} { set result "InfoRiscQuadra610"
+	} elseif { $boxnumber ==  76 && $cpuid == 0x3203} { set result "InfoRiscQuadra650"
+	} elseif { $boxnumber ==  76 && $cpuid == 0x3204} { set result "InfoRiscCentris610"
+	} elseif { $boxnumber ==  97 } { set result "InfoYeager"
+	} elseif { $boxnumber ==  98 } { set result "InfoRiscQuadra900"
+	} elseif { $boxnumber ==  99 } { set result "InfoRiscQuadra950"
+	} elseif { $boxnumber == 106 } { set result "InfoPDMCarlSagan"
+	} elseif { $boxnumber == 110 } { set result "InfoSTPQuadra700"
+	} elseif { $boxnumber == 111 } { set result "InfoSTPQuadra900"
+	} elseif { $boxnumber == 112 } { set result "InfoSTPQuadra950"
+	} elseif { $boxnumber == 113 } { set result "InfoSTPCentris610"
+	} elseif { $boxnumber == 114 } { set result "InfoSTPCentris650"
+	} elseif { $boxnumber == 115 } { set result "InfoSTPQuadra610"
+	} elseif { $boxnumber == 116 } { set result "InfoSTPQuadra650"
+	} elseif { $boxnumber == 117 && $viamask == 0x56000000 && $viaid == 0x12000000 } { set result "InfoSTPQuadra800"
+	} elseif { $boxnumber == 117 && $viamask == 0x56000000 && $viaid == 0x16000000 } { set result "InfoSTPQuadra40F"
+	} elseif { $boxnumber == 253 && $DecoderKind ==  0 } { set result "InfoUnknownUnknown"
+	} elseif { $boxnumber == 253 && $DecoderKind ==  5 } { set result "InfoMDUUnknown"
+	} elseif { $boxnumber == 253 && $DecoderKind ==  6 } { set result "InfoOSSUnknown"
+	} elseif { $boxnumber == 253 && $DecoderKind ==  7 } { set result "InfoVISAUnknown"
+	} elseif { $boxnumber == 253 && $DecoderKind ==  9 } { set result "InfoJAWSUnknown"
+	} elseif { $boxnumber == 253 && $DecoderKind == 12 } { set result "InfoNiagraUnknown"
+	} else { set result ""}
+	return $result;
+}
+
+proc product_cpuid {input} {
+	if { 0 } {
+	} elseif { $input == 0      } { set result "0"
+	} elseif { $input == 0x0001 } { set result "LC III (cpuIDHiVol|cpuIDinReg|Vail25IDField)"
+	} elseif { $input == 0x0003 } { set result "LC III+ (cpuIDHiVol|cpuIDinReg|Vail33IDField)"
+	} elseif { $input == 0x0100 } { set result "LC 520 (cpuIDHiVol|\$100)"
+	} elseif { $input == 0x0101 } { set result "LC 550 (and Color Classic II?) (cpuIDHiVol|\$101)"
+	} elseif { $input == 0x1000 } { set result "PowerBook Duo 280c (cpuIDPortable|cpuIDinReg|0)"
+	} elseif { $input == 0x1002 } { set result "PowerBook Duo 270c (cpuIDPortable|cpuIDinReg|2)"
+	} elseif { $input == 0x1004 } { set result "PowerBook Duo 210 (cpuIDPortable|cpuIDinReg|4)"
+	} elseif { $input == 0x1005 } { set result "PowerBook Duo 230 (cpuIDPortable|cpuIDinReg|5)"
+	} elseif { $input == 0x1006 } { set result "PowerBook Duo 235 (cpuIDPortable|cpuIDinReg|6)"
+	} elseif { $input == 0x1808 } { set result "PowerBook 520/540 (cpuIDPortable|cpuIDinBoard|8)"
+	} elseif { $input == 0x1809 } { set result "PowerBook Duo 2300 (cpuIDPortable|cpuIDinBoard|9)"
+	} elseif { $input == 0x180A } { set result "PowerBook 5300 (cpuIDPortable|cpuIDinBoard|10)"
+	} elseif { $input == 0x180B } { set result "PowerBook 190 (cpuIDPortable|cpuIDinBoard|11)"
+	} elseif { $input == 0x2015 } { set result "IIvx (cpuIDHiEnd|cpuIDinReg|21)"
+	} elseif { $input == 0x2221 } { set result "LC 475 (cpuIDHiEnd|\$221)"
+	} elseif { $input == 0x2225 } { set result "Quadra 605 (cpuIDHiEnd|\$225)"
+	} elseif { $input == 0x2226 } { set result "Quadra 630 (cpuIDHiEnd|\$226)"
+	} elseif { $input == 0x222E } { set result "LC 575 (cpuIDHiEnd|\$22E)"
+	} elseif { $input == 0x2830 } { set result "Quadra 660/840 (cpuIDHiEnd|cpuIDinMMC|\$30)"
+	} elseif { $input == 0x2BAD } { set result "Quadra/Centris 610/650/800 (cpuIDHiEnd|cpuIDinVIA|\$3AD)"
+	} elseif { $input == 0x3010 } { set result "PowerMac 6100 (cpuIDRISC|\$3010)"
+	} elseif { $input == 0x3011 } { set result "PDM (cpuIDRISC|cpuIDinReg|\$3011)"
+	} elseif { $input == 0x3012 } { set result "PowerMac 7100 (cpuIDRISC|cpuIDinReg|\$3012)"
+	} elseif { $input == 0x3013 } { set result "PowerMac 8100 (cpuIDRISC|cpuIDinReg|\$3013)"
+	} elseif { $input == 0x3020 } { set result "PowerMac 7500 (cpuIDRISC|cpuIDinReg|\$3020)"
+	} elseif { $input == 0x3021 } { set result "PowerMac 7300 (cpuIDRISC|\$3021)"
+	} elseif { $input == 0x3022 } { set result "PowerMac 7600/8600/9600 (cpuIDRISC|\$3022)"
+	} elseif { $input == 0x3025 } { set result "PowerBook 2400 (cpuIDRISC|\$3025)"
+	} elseif { $input == 0x3026 } { set result "PowerBook 3400 (cpuIDRISC|\$3026)"
+	} elseif { $input == 0x3041 } { set result "PowerMac G3 “Beige” (cpuIDRISC|\$3041)"
+	} elseif { $input == 0x3042 } { set result "PowerBook G3 “WallStreet” (cpuIDRISC|\$3042)"
+	} elseif { $input == 0x3046 } { set result "PowerBook G3 “WallStreet” (cpuIDRISC|\$3046)"
+	} elseif { $input == 0x3200 } { set result "Wombat product table w/Smurf...a centris650 (Lego plastics) (cpuIDRISC|\$1200)"
+	} elseif { $input == 0x3201 } { set result "Quadra800 with a Risc card (cpuIDRISC|\$1201)"
+	} elseif { $input == 0x3202 } { set result "Quadra610 with a smurf card (cpuIDRISC|\$1202)"
+	} elseif { $input == 0x3203 } { set result "Quadra650 with a smurf card (cpuIDRISC|\$1203)"
+	} elseif { $input == 0x3204 } { set result "Centris610 with a Smurf card (cpuIDRISC|\$1204)"
+	} elseif { $input == 0x3235 } { set result "601 Smurf card running in Quadra 700 (cpuIDRISC|\$1235)"
+	} elseif { $input == 0x3236 } { set result "601 Smurf card running in Quadra 900 (cpuIDRISC|\$1236)"
+	} elseif { $input == 0x3237 } { set result "601 Smurf card running in Quadra 950 (cpuIDRISC|\$1237)"
+	} elseif { $input == 0x7100 } { set result "Pippin @Mark ((4<<12)|cpuIDRISC|\$100)"
+	} else {
+		set result [format "Unknown (0x%X)" $input]
+	}
+	return $result
+}
+
+proc product_kind {input} {
+	switch $input {
+		253 { set result "boxUnknown" }
+		254 { set result "boxPlus" }
+		255 { set result "boxSE" }
+		  0 { set result "boxMacII" }
+		  1 { set result "boxMacIIx" }
+		  2 { set result "boxMacIIcx" }
+		  3 { set result "boxSE30" }
+		  4 { set result "boxPortable" }
+		  5 { set result "boxMacIIci" }
+		  6 { set result "boxFourSquare" }
+		  7 { set result "boxMacIIfx" }
+		  8 { set result "boxAuroraCX16" }
+		  9 { set result "boxAuroraSE25" }
+		 10 { set result "boxAuroraSE16" }
+		 11 { set result "boxMacClassic" }
+		 12 { set result "boxMacIIsi" }
+		 13 { set result "boxMacLC" }
+		 14 { set result "boxQuadra900" }
+		 15 { set result "boxPowerBook170" }
+		 16 { set result "boxQuadra700" }
+		 17 { set result "boxClassicII" }
+		 18 { set result "boxPowerBook100" }
+		 19 { set result "boxPowerBook140" }
+		 20 { set result "boxQuadra950" }
+		 21 { set result "boxLCIII" }
+		 22 { set result "boxSoftmacSUN" }
+		 23 { set result "boxPowerBookDuo210" }
+		 24 { set result "boxCentris650" }
+		 25 { set result "boxColumbia" }
+		 26 { set result "boxPowerBookDuo230" }
+		 27 { set result "boxPowerBook180" }
+		 28 { set result "boxPowerBook160" }
+		 29 { set result "boxQuadra800" }
+		 30 { set result "boxQuadra650" }
+		 31 { set result "boxMacLCII" }
+		 32 { set result "boxPowerBookDuo250" }
+		 33 { set result "boxDBLite20" }
+		 34 { set result "boxVail16" }
+		 35 { set result "boxCarnation25" }
+		 36 { set result "boxCarnation16" }
+		 37 { set result "boxCyclone33" }
+		 38 { set result "boxBrazil16L" }
+		 39 { set result "boxBrazil32L" }
+		 40 { set result "boxBrazil16F" }
+		 41 { set result "boxBrazil32F" }
+		 42 { set result "boxBrazilC" }
+		 43 { set result "boxSlice" }
+		 44 { set result "boxMonet" }
+		 45 { set result "boxWombat40" }
+		 46 { set result "boxCentris610" }
+		 47 { set result "boxQuadra610" }
+		 48 { set result "boxPowerBook145" }
+		 49 { set result "boxBrazil32cF" }
+		 50 { set result "boxHook" }
+		 51 { set result "boxUnused" }
+		 52 { set result "boxWombat20" }
+		 53 { set result "boxWombat40F" }
+		 54 { set result "boxCentris660AV" }
+		 55 { set result "boxPDM|boxRiscQuadra700" }
+		 56 { set result "boxVail33" }
+		 57 { set result "boxWLCD33" }
+		 58 { set result "boxPDM66F" }
+		 59 { set result "boxPDM80F" }
+		 60 { set result "boxPDM100F" }
+		 61 { set result "boxTNTProto1" }
+		 62 { set result "boxTesseractF" }
+		 63 { set result "boxTesseractC" }
+		 64 { set result "boxJust930" }
+		 65 { set result "boxHokusai" }
+		 66 { set result "boxBlackbird" }
+		 67 { set result "boxBlackbirdLC" }
+		 68 { set result "boxPDMEvt1" }
+		 69 { set result "boxPDM50WLCD" }
+		 70 { set result "boxYeagerFSTN" }
+		 71 { set result "boxPowerBookDuo270C" }
+		 72 { set result "boxQuadra840AV" }
+		 73 { set result "boxTempest33" }
+		 74 { set result "boxHook33" }
+		 75 { set result "boxSlice25" }
+		 76 { set result "boxRiscCentris650" }
+		 77 { set result "boxSlice33" }
+		 78 { set result "boxNorad" }
+		 79 { set result "boxBudMan" }
+		 80 { set result "boxPrimus20" }
+		 81 { set result "boxOptimus20" }
+		 82 { set result "boxHookTV" }
+		 83 { set result "boxLC475" }
+		 84 { set result "boxPrimus33" }
+		 85 { set result "boxOptimus25" }
+		 86 { set result "boxLC575" }
+		 87 { set result "boxAladdin20" }
+		 88 { set result "boxQuadra605" }
+		 89 { set result "boxAladdin33" }
+		 90 { set result "boxMalcolm25" }
+		 91 { set result "boxMalcolm33" }
+		 92 { set result "boxSlimus25" }
+		 93 { set result "boxSlimus33" }
+		 94 { set result "boxPDM66WLCD" }
+		 95 { set result "boxPDM80WLCD" }
+		 96 { set result "boxYeagerG" }
+		 97 { set result "boxYeagerC" }
+		 98 { set result "boxRiscQuadra900" }
+		 99 { set result "boxRiscQuadra950" }
+		100 { set result "boxRiscCentris610" }
+		101 { set result "boxRiscQuadra800" }
+		102 { set result "boxRiscQuadra610" }
+		103 { set result "boxRiscQuadra650" }
+		104 { set result "boxRiscTempest" }
+		105 { set result "boxPDM50L" }
+		106 { set result "boxPDM66L" }
+		107 { set result "boxPDM80L" }
+		108 { set result "boxBlackbirdBFD" }
+		109 { set result "boxJedi" }
+		110 { set result "boxSTPQ700" }
+		111 { set result "boxSTPQ900" }
+		112 { set result "boxSTPQ950" }
+		113 { set result "boxSTPC610" }
+		114 { set result "boxSTPC650" }
+		115 { set result "boxSTPQ610" }
+		116 { set result "boxSTPQ650" }
+		117 { set result "boxSTPQ800" }
+		118 { set result "boxAJ" }
+		119 { set result "boxAJ80" }
+		120 { set result "boxMalcolmBB" }
+		121 { set result "boxMalcolmBB80" }
+		122 { set result "boxM2" }
+		123 { set result "boxM280" }
+		124 { set result "boxSoftmacHP" }
+		125 { set result "boxSoftmacIBM" }
+		126 { set result "boxSoftmacAUX" }
+		127 { set result "boxExtended" }
+		default { set result "Unknown ($input)" }
+	}
+	return $result
+}
+
+proc decoder_kind {input} {
+	switch $input {
+		 0 { set result "UnknownDecoder" }
+		 1 { set result "MacPALDecoder" }
+		 2 { set result "BBUDecoder" }
+		 3 { set result "NormandyDecoder" }
+		 4 { set result "GLUEDecoder" }
+		 5 { set result "MDUDecoder" }
+		 6 { set result "OSSFMCDecoder" }
+		 7 { set result "VISADecoder" }
+		 8 { set result "OrwellDecoder" }
+		 9 { set result "JAWSDecoder" }
+		10 { set result "MSCDecoder" }
+		11 { set result "SonoraDecoder" }
+		12 { set result "NiagraDecoder" }
+		13 { set result "YMCADecoder" }
+		14 { set result "djMEMCDecoder" }
+		15 { set result "HMCDecoder" }
+		16 { set result "PrattDecoder" }
+		17 { set result "HHeadDecoder" }
+		default { set result "Unknown ($input)" }
+	}
+	return $result
+}
+
+proc rom85_word {input} {
+	switch $input {
+		16383 { set result "New ROMs, Power Off ability, ColorQD" }
+		32767 { set result "New ROMs, no Power Off ability, no Color QD" }
+		65535 { set result "not New ROM, no Power Off ability, no Color QD" }
+		default { set result "Unknown ($input)" }
+	}
+	return $result
+}
+
+proc default_rsrcs {input} {
+	switch $input {
+		1 { set result "AppleTalk1" }
+		2 { set result "AppleTalk2" }
+		3 { set result "AppleTalk2_NetBoot_FPU" }
+		4 { set result "AppleTalk2_NetBoot_NoFPU" }
+		default { set result "Unknown ($input)" }
+	}
+	return $result
+}
+
+proc productinfo_vers {input} {
+	switch $input {
+		1 { set result "ProductInfoVersion" }
+		default { set result "Unknown ($input)" }
+	}
+	return $result
+}
+
+proc decoderinfo_vers {input} {
+	switch $input {
+		1 { set result "DecoderInfoVersion" }
+		default { set result "Unknown ($input)" }
+	}
+	return $result
+}
+
+proc adb_mask {input} {
+	switch $input {
+		0 { set result "ADBXcvr" }
+		1 { set result "ADBPwrMgr" }
+		2 { set result "ADBIop" }
+		3 { set result "ADBEgret" }
+		4 { set result "ADBspare4" }
+		5 { set result "ADBspare5" }
+		6 { set result "ADBspare6" }
+		7 { set result "ADBspare7" }
+		default { set result "Unknown ($input)" }
+	}
+	return $result
+}
+
+proc clock_mask {input} {
+	switch $input {
+		0 { set result "ClockRTC" }
+		1 { set result "ClockPwrMgr" }
+		2 { set result "ClockEgret" }
+		3 { set result "ClockNoPram" }
+		4 { set result "Clockspare4" }
+		5 { set result "Clockspare5" }
+		6 { set result "Clockspare6" }
+		7 { set result "Clockspare7" }
+		default { set result "Unknown ($input)" }
+	}
+	return $result
+}
+
+proc keysw_mask {input} {
+	switch $input {
+		0 { set result "KeyswNone" }
+		1 { set result "KeyswCaboose" }
+		2 { set result "KeyswSpare2" }
+		3 { set result "KeyswSpare3" }
+		default { set result "Unknown ($input)" }
+	}
+	return $result
+}
+
+proc egretfw_mask {input} {
+	switch $input {
+		0 { set result "EgretNone" }
+		1 { set result "Egret8" }
+		2 { set result "Caboose" }
+		3 { set result "Cuda" }
+		4 { set result "EgretFWSpare4" }
+		5 { set result "EgretFWSpare5" }
+		6 { set result "EgretFWSpare6" }
+		7 { set result "EgretFWSpare7" }
+		default { set result "Unknown ($input)" }
+	}
+	return $result
+}
+
+proc shal_mask {input} {
+	switch $input {
+		0 { set result "SHALReserved" }
+		1 { set result "SHALPSC" }
+		2 { set result "SHALAMIC" }
+		3 { set result "SHALSpare3" }
+		4 { set result "SHALSpare4" }
+		5 { set result "SHALSpare5" }
+		6 { set result "SHALSpare6" }
+		7 { set result "SHALSpare7" }
+		default { set result "Unknown ($input)" }
+	}
+	return $result
+}
+
+proc one_addr {thebits bitnumber name} {
+	#entry "what" [format "bitnumber:%d len:%d thebits:%s" $bitnumber [string length $thebits] $thebits] 4
+	set addr [uint32]
+	if {$bitnumber < [string length $thebits]} {
+		set thebit [string index $thebits $bitnumber]
+		if {$addr != 0} {
+			move -4
+			if {$thebit == "1"} {
+				uint32 -hex $name
+			} else {
+				entry $name [format "0x%X (but not marked valid)" $addr] 4
+				move 4
+			}
+		} elseif {$thebit == "1"} {
+			entry $name [format "0x%X (but marked valid)" $addr] 4
+			move 4
+		}
+	}
+}
+
+proc one_bit {bit name} {
+	set val [uint32_bits $bit]
+	move -4
+	if {$val != 0} {
+		uint32_bits $bit $name
+		move -4
+	}
+}
+
+proc one_bit16 {bit name} {
+	set val [uint16_bits $bit]
+	move -2
+	if {$val != 0} {
+		uint16_bits $bit $name
+		move -2
+	}
+}
+
+proc parse_flags {base ext} {
+	set BasesValid [uint32]
+	set BasesValid1 [uint32]
+	set BasesValid2 [uint32]
+	set ExtValid [uint32]
+	set ExtValid1 [uint32]
+	set ExtValid2 [uint32]
+	move -24
+
+	if {$BasesValid != 0} {
+		section $base {
+			one_bit  0 "ROMExists"
+			one_bit  1 "DiagROMExists"
+			one_bit  2 "VIA1Exists"
+			one_bit  3 "SCCRdExists"
+			one_bit  4 "SCCWrExists"
+			one_bit  5 "IWMExists"
+			one_bit  6 "PWMExists"
+			one_bit  7 "SoundExists"
+			one_bit  8 "SCSIExists"
+			one_bit  9 "SCSIDackExists"
+			one_bit 10 "SCSIHskExists"
+			one_bit 11 "VIA2Exists"
+			one_bit 12 "ASCExists"
+			one_bit 13 "RBVExists"
+			one_bit 14 "VDACExists"
+			one_bit 15 "SCSIDMAExists"
+			one_bit 16 "SWIMIOPExists"
+			one_bit 17 "SCCIOPExists"
+			one_bit 18 "OSSExists"
+			one_bit 19 "FMCExists"
+			one_bit 20 "RPUExists"
+			one_bit 21 "OrwellExists"
+			one_bit 22 "JAWSExists"
+			one_bit 23 "SonicExists"
+			one_bit 24 "SCSI96_1Exists"
+			one_bit 25 "SCSI96_2Exists"
+			one_bit 26 "DAFBExists"
+			one_bit 27 "PSCExists"
+			one_bit 28 "ROMPhysExists"
+			one_bit 29 "PatchROMExists"
+			one_bit 30 "NewAgeExists"
+			one_bit 31 "Unused31Exists"
+			move 4
+		}
+	} else {
+		uint32 $base
+	}
+
+	if {$BasesValid1 != 0} {
+		section [format "%s1" $base] {
+			one_bit  0 "SingerExists"
+			one_bit  1 "DSPExists"
+			one_bit  2 "MACEExists"
+			one_bit  3 "MUNIExists"
+			one_bit  4 "AMICExists"
+			one_bit  5 "PrattExists"
+			one_bit  6 "SWIM3Exists"
+			one_bit  7 "AwacsExists"
+			one_bit  8 "CivicExists"
+			one_bit  9 "SebastianExists"
+			one_bit 10 "BARTExists"
+			one_bit 11 "GrandCentralExists"
+			one_bit 12 "PBX1Exists"
+			one_bit 13 "PBX2Exists"
+			one_bit 14 "PBX3Exists"
+			one_bit 15 "ATAExists"
+			one_bit 16 "HammerHeadExists"
+			one_bit 17 "PlatinumExists"
+			one_bit 18 "Pratt2Exists"
+			one_bit 19 "PSXExists"
+			one_bit 20 "OHareExists"
+			one_bit 21 "GrackleExists"
+			one_bit 22 "HydraExists"
+			one_bit 23 "SuperIOExists"
+			one_bit 24 "SIOExists"
+			one_bit 25 "HeathrowExists"
+			one_bit 26 "MFMFloppyExists"
+			one_bit 27 "MFMMethodsVectorExists"
+			one_bit 28 "FatManExists"
+			one_bit 29 "OpenPICExists"
+			one_bit 30 "CHRPNess"
+			one_bit 31 "GatwickExists"
+			move 4
+		}
+	} else {
+		uint32 [format "%s1" $base]
+	}
+
+	if {$BasesValid2 != 0} {
+		section [format "%s2" $base] {
+			one_bit  0 "Unused64Exists"
+			one_bit  1 "BarExists"
+			one_bit  2 "Unused66Exists"
+			one_bit  3 "Unused67Exists"
+			one_bit  4 "Unused68Exists"
+			one_bit  5 "Unused69Exists"
+			one_bit  6 "Unused70Exists"
+			one_bit  7 "Unused71Exists"
+			one_bit  8 "Unused72Exists"
+			one_bit  9 "Unused73Exists"
+			one_bit 10 "Unused74Exists"
+			one_bit 11 "Unused75Exists"
+			one_bit 12 "Unused76Exists"
+			one_bit 13 "Unused77Exists"
+			one_bit 14 "Unused78Exists"
+			one_bit 15 "Unused79Exists"
+			one_bit 16 "Unused80Exists"
+			one_bit 17 "Unused81Exists"
+			one_bit 18 "Unused82Exists"
+			one_bit 19 "Unused83Exists"
+			one_bit 20 "Unused84Exists"
+			one_bit 21 "Unused85Exists"
+			one_bit 22 "Unused86Exists"
+			one_bit 23 "Unused87Exists"
+			one_bit 24 "Unused88Exists"
+			one_bit 25 "Unused89Exists"
+			one_bit 26 "Unused90Exists"
+			one_bit 27 "Unused91Exists"
+			one_bit 28 "Unused92Exists"
+			one_bit 29 "Unused93Exists"
+			one_bit 30 "Unused94Exists"
+			one_bit 31 "Unused95Exists"
+			move 4
+		}
+	} else {
+		uint32 [format "%s2" $base]
+	}
+
+	if {$ExtValid != 0} {
+		section $ext {
+			one_bit 0 "PGCInstalled"
+
+			set ADBMask [uint32_bits 3,2,1]
+			move -4
+			entry "ADBMask" [adb_mask $ADBMask] 4
+
+			set ClockMask [uint32_bits 6,5,4]
+			move -4
+			entry "ClockMask" [clock_mask $ClockMask] 4
+
+			one_bit  7 "V8ChipBit"
+
+			one_bit  8 "SoundHasSoundIn"
+			one_bit  9 "Sound16Bit"
+			one_bit 10 "SoundStereoIn"
+			one_bit 11 "SoundStereoOut"
+			one_bit 12 "SoundStereoMixing"
+			one_bit 13 "SoundPlayAndRecord"
+			one_bit 14 "SoundHasDFAC2"
+			one_bit 15 "SoundLineLevel"
+
+			one_bit 16 "SupportsIdle"
+			one_bit 17 "PMgrNewIntf"
+
+			set KeyswMask [uint32_bits 19,18]
+			move -4
+			if {$KeyswMask != 0} {
+				entry "KeyswMask" [keysw_mask $KeyswMask] 4
+			}
+
+			one_bit 20 "MSCChipBit"
+			one_bit 21 "NiagraExistsBit"
+			one_bit 22 "SonoraExistsBit"
+			one_bit 23 "djMEMCChipBit"
+
+			set EgretFWMask [uint32_bits 26,25,24]
+			move -4
+			if {$EgretFWMask != 0} {
+				entry "EgretFWMask" [egretfw_mask $EgretFWMask] 4
+			}
+
+			one_bit 27 "SupportsBtnInt"
+			one_bit 28 "SupportsROMDisk"
+			one_bit 29 "hasHardPowerOff"
+			one_bit 30 "SoftVBL"
+			one_bit 31 "hasNewMemMgr"
+			move 4
+		}
+	} else {
+		uint32 $ext
+	}
+
+	if {$ExtValid1 != 0} {
+		section [format "%s1" $ext] {
+			one_bit  0 "has68kEmulator"
+			one_bit  1 "SerialDMA"
+
+			set SHALMask [uint32_bits 4,3,2]
+			move -4
+			if {$SHALMask != 0} {
+				entry "SHALMask" [shal_mask $SHALMask] 4
+			}
+
+			one_bit  5 "hasEnhancedLTalk"
+
+			set Reserved [uint32]
+			set Reserved [expr $Reserved >> 6]
+			move -4
+			if {$Reserved != 0} {
+				set Reserved [format %X $Reserved]
+#	return "$major.$minor ($$hex_version/$version)"
+				entry "Reserved (bits 31-6)" "0x$Reserved" 4
+			}
+			move 4
+		}
+	} else {
+		uint32 [format "%s1" $ext]
+	}
+
+	if {$ExtValid2 != 0} {
+		uint32 -hex [format "%s2" $ext]
+	} else {
+		uint32 [format "%s2" $ext]
+	}
+}
+
+proc getbits {num} {
+	set res ""
+	for {set i 0} {$i < 32} {incr i} {
+		set res $res[expr {$num%2}]
+		set num [expr {$num/2}]
+	}
+	return $res
+}
+
+proc parse_decoder_info {decodertableptr} {
+	set returnpos [pos]
+	# the DecoderInfo is at DecoderTable(FirstBaseAddr) - 40
+	goto [expr $decodertableptr - 40]
+
+	set DefaultBases [uint32]
+	set DefaultBases1 [uint32]
+	set DefaultBases2 [uint32]
+	move -12
+	set thebits [format "%s%s%s" [getbits $DefaultBases] [getbits $DefaultBases1] [getbits $DefaultBases2]]
+	regsub -- "0*$" $thebits "" thebits
+
+	parse_flags "DefaultBases" "DefExtFeatures"
+
+	uint8 -hex "AvoidVIA1A"
+	uint8 -hex "AvoidVIA1B"
+	uint8 -hex "AvoidVIA2A"
+	uint8 -hex "AvoidVIA2B"
+
+	offset32code "CheckForProc" $decodertableptr
+
+	set AddrMap [uint8]
+	move -1
+	set decoder_name [decoder_kind $AddrMap]
+	entry "AddrMap" $decoder_name 1
+	sectionname [format "DecoderInfoPtr -> DecoderInfo (%s)" $decoder_name]
+	move 1
+
+	set DecoderInfoVers [uint8]
+	move -1
+	entry "DecoderInfoVers" [decoderinfo_vers $DecoderInfoVers] 1
+	move 1
+
+	uint16 "filler"
+
+	uint32 -hex "DecoderAddr"
+
+	if {($DefaultBases | $DefaultBases1 | $DefaultBases2) != 0} {
+		section "DecoderTable" {
+			if {$DefaultBases != 0} {
+				one_addr $thebits  0 "ROMAddr"
+				one_addr $thebits  1 "DiagROMAddr"
+				one_addr $thebits  2 "VIA1Addr"
+				one_addr $thebits  3 "SCCRdAddr"
+				one_addr $thebits  4 "SCCWrAddr"
+				one_addr $thebits  5 "IWMAddr"
+				one_addr $thebits  6 "PWMAddr"
+				one_addr $thebits  7 "SoundAddr"
+				one_addr $thebits  8 "SCSIAddr"
+				one_addr $thebits  9 "SCSIDackAddr"
+				one_addr $thebits 10 "SCSIHskAddr"
+				one_addr $thebits 11 "VIA2Addr"
+				one_addr $thebits 12 "ASCAddr"
+				one_addr $thebits 13 "RBVAddr"
+				one_addr $thebits 14 "VDACAddr"
+				one_addr $thebits 15 "SCSIDMAAddr"
+				one_addr $thebits 16 "SWIMIOPAddr"
+				one_addr $thebits 17 "SCCIOPAddr"
+				one_addr $thebits 18 "OSSAddr"
+				one_addr $thebits 19 "FMCAddr"
+				one_addr $thebits 20 "RPUAddr"
+				one_addr $thebits 21 "OrwellAddr"
+				one_addr $thebits 22 "JAWSAddr"
+				one_addr $thebits 23 "SonicAddr"
+				one_addr $thebits 24 "SCSI96Addr1"
+				one_addr $thebits 25 "SCSI96Addr2"
+				one_addr $thebits 26 "DAFBAddr"
+				one_addr $thebits 27 "PSCAddr"
+				one_addr $thebits 28 "ROMPhysAddr"
+				one_addr $thebits 29 "PatchROMAddr"
+				one_addr $thebits 30 "NewAgeAddr"
+				one_addr $thebits 31 "Unused31Addr"
+			}
+
+			if {$DefaultBases1 != 0} {
+				one_addr $thebits 32 "SingerAddr"
+				one_addr $thebits 33 "DSPAddr"
+				one_addr $thebits 34 "MACEAddr"
+				one_addr $thebits 35 "MUNIAddr"
+				one_addr $thebits 36 "AMICAddr"
+				one_addr $thebits 37 "PrattAddr"
+				one_addr $thebits 38 "SWIM3Addr"
+				one_addr $thebits 39 "AwacsAddr"
+				one_addr $thebits 40 "CivicAddr"
+				one_addr $thebits 41 "SebastianAddr"
+				one_addr $thebits 42 "BARTAddr"
+				one_addr $thebits 43 "GrandCentralAddr"
+				one_addr $thebits 44 "PBX1Addr"
+				one_addr $thebits 45 "PBX2Addr"
+				one_addr $thebits 46 "PBX3Addr"
+				one_addr $thebits 47 "ATAAddr"
+				one_addr $thebits 48 "HammerHeadAddr"
+				one_addr $thebits 49 "PlatinumAddr"
+				one_addr $thebits 50 "Pratt2Addr"
+				one_addr $thebits 51 "PSXAddr"
+				one_addr $thebits 52 "OHareAddr"
+				one_addr $thebits 53 "GrackleAddr"
+				one_addr $thebits 54 "HydraAddr"
+				one_addr $thebits 55 "SuperIOAddr"
+				one_addr $thebits 56 "SIOAddr"
+				one_addr $thebits 57 "HeathrowAddr"
+				one_addr $thebits 58 "MFMFloppyAddr"
+				one_addr $thebits 59 "MFMMethodsVectorAddr"
+				one_addr $thebits 60 "FatManAddr"
+				one_addr $thebits 61 "OpenPICAddr"
+				one_addr $thebits 62 "CHRPNessAddr"
+				one_addr $thebits 63 "GatwickAddr"
+			}
+
+			if {$DefaultBases2 != 0} {
+				one_addr $thebits 64 "Unused64Addr"
+				one_addr $thebits 65 "BarAddr"
+				one_addr $thebits 66 "Unused66Addr"
+				one_addr $thebits 67 "Unused67Addr"
+				one_addr $thebits 68 "Unused68Addr"
+				one_addr $thebits 69 "Unused69Addr"
+				one_addr $thebits 70 "Unused70Addr"
+				one_addr $thebits 71 "Unused71Addr"
+				one_addr $thebits 72 "Unused72Addr"
+				one_addr $thebits 73 "Unused73Addr"
+				one_addr $thebits 74 "Unused74Addr"
+				one_addr $thebits 75 "Unused75Addr"
+				one_addr $thebits 76 "Unused76Addr"
+				one_addr $thebits 77 "Unused77Addr"
+				one_addr $thebits 78 "Unused78Addr"
+				one_addr $thebits 79 "Unused79Addr"
+				one_addr $thebits 80 "Unused80Addr"
+				one_addr $thebits 81 "Unused81Addr"
+				one_addr $thebits 82 "Unused82Addr"
+				one_addr $thebits 83 "Unused83Addr"
+				one_addr $thebits 84 "Unused84Addr"
+				one_addr $thebits 85 "Unused85Addr"
+				one_addr $thebits 86 "Unused86Addr"
+				one_addr $thebits 87 "Unused87Addr"
+				one_addr $thebits 88 "Unused88Addr"
+				one_addr $thebits 89 "Unused89Addr"
+				one_addr $thebits 90 "Unused90Addr"
+				one_addr $thebits 91 "Unused91Addr"
+				one_addr $thebits 92 "Unused92Addr"
+				one_addr $thebits 93 "Unused93Addr"
+				one_addr $thebits 94 "Unused94Addr"
+				one_addr $thebits 95 "Unused95Addr"
+			}
+		}
+	}
+
+	endsection
+	goto $returnpos
+	return [expr $AddrMap == 0]
+}
+
+proc parse_ram_info {infoptr} {
+	set returnpos [pos]
+	goto $infoptr
+
+	set NextBankStart 0
+	while {1} {
+		uint32 -hex "MinBankSize"
+		uint32 -hex "HighBankStart"
+		uint32 -hex "HighBankEnd"
+		while {1} {
+			set NextBankStart [uint32]
+			if {$NextBankStart == 0xFFFFFFFF} {
+				move -4
+				entry "NextBankStart" "end of table(s) (0xFFFFFFFF)" 4
+				move 4
+				break
+			} elseif {$NextBankStart == 0x53616D42} {
+				move -4
+				entry "NextBankStart" "end of first table (SamB)" 4
+				move 4
+				break
+			} else {
+				move -4
+				uint32 -hex "NextBankStart"
+			}
+			uint32 -hex "NextBankEnd"
+		}
+		if {$NextBankStart == 0xFFFFFFFF} {
+			break
+		}
+	}
+
+	endsection
+	goto $returnpos
+}
+
+proc parse_video_info {infoptr} {
+	set returnpos [pos]
+	goto $infoptr
+
+	if {1} {
+		sectionname  "VideoInfoPtr -> VideoInfo (VIBuiltIn)"
+		uint32 -hex "VRAMPhysAddr"
+		uint32 -hex "VRAMLogAddr32"
+		uint32 -hex "VRAMLogAddr24"
+		uint8  -hex "SlotNumberAlias"
+		uint8  -hex "SlotPramAddr"
+		uint8  -hex "SuperSRsrcDirID"
+		uint8  -hex "BoardSRsrcID"
+		uint16 -hex "DrvrHwID"
+	} else {
+		sectionname  "VideoInfoPtr -> VideoInfo (VIClassic)"
+		uint32 -hex "VRAMAddr"
+		uint32 "ScreenByteSize"
+		uint16 "ScreenTop"
+		uint16 "ScreenLeft"
+		uint16 "ScreenBottom"
+		uint16 "ScreenRight"
+		uint16 "RowByteSize"
+		uint16 "RetraceRate"
+		uint16 "HorizDPI"
+		uint16 "VertDPI"
+	}
+
+	endsection
+	goto $returnpos
+}
+
+proc parse_nubus_info {infoptr} {
+	set returnpos [pos]
+	goto $infoptr
+
+	for {set i 0} {$i < 16} {incr i} {
+		set slotbits [uint8]
+		if {$slotbits != 0} {
+			set slotstring ""
+			if {$slotbits &    1} { set slotstring "$slotstring, hasPRAM" }
+			if {$slotbits &    2} { set slotstring "$slotstring, canInterrupt" }
+			if {$slotbits &    4} { set slotstring "$slotstring, hasConnector" }
+			if {$slotbits &    8} { set slotstring "$slotstring, slotDisabled" }
+			if {$slotbits & 0x10} { set slotstring "$slotstring, directSlot" }
+			if {$slotbits & 0x20} { set slotstring "$slotstring, slotReserved" }
+			if {$slotbits & 0x40} { set slotstring "$slotstring, dockingSlot" }
+			if {$slotbits & 0x80} { set slotstring "$slotstring, bit7?" }
+			move -1
+			entry [format "Slot%X" $i] [string range $slotstring 2 end] 1
+			move 1
+		}
+	}
+
+	endsection
+	goto $returnpos
+}
+
+
+proc parse_VIA1Init {infoptr} {
+	set returnpos [pos]
+	goto $infoptr
+
+	uint8 -hex "vBufA initial value"
+	uint8 -hex "vDIRA initial value"
+	uint8 -hex "vBufB initial value"
+	uint8 -hex "vDIRB initial value"
+	uint8 -hex "vPCR initial value"
+	uint8 -hex "vACR initial value"
+
+	endsection
+	goto $returnpos
+}
+
+proc parse_VIA2Init {infoptr} {
+	set returnpos [pos]
+	goto $infoptr
+
+	uint8 -hex "vBufA initial value"
+	uint8 -hex "vDIRA initial value"
+	uint8 -hex "vBufB initial value"
+	uint8 -hex "vDIRB initial value"
+	uint8 -hex "vPCR initial value"
+	uint8 -hex "vACR initial value"
+
+	endsection
+	goto $returnpos
+}
+
+proc parse_SndControl {infoptr} {
+	set returnpos [pos]
+	goto [expr $infoptr - 4]
+
+	section [field_name_and_symbol "SndControl header" [pos]]
+		uint16 -hex "flags"
+		set SndTblLength [int16 "SndTblLength"]
+		if {$SndTblLength == 0} {set SndTblLength 1 }
+	endsection
+	section [field_name_and_symbol "SndBeginTable" [pos]] {
+		for {set i 0} {$i < $SndTblLength} {incr i} {
+			switch $i {
+				 0 { set name "sndDFACInit" }
+				 1 { set name "sndDFACSend" }
+				 2 { set name "sndPlaybackVol" }
+				 3 { set name "sndEnableInt" }
+				 4 { set name "sndDisableInt" }
+				 5 { set name "sndClearInt" }
+				 6 { set name "sndInputSelect" }
+				 7 { set name "sndInputSource" }
+				 8 { set name "sndAuxByPass" }
+				 9 { set name "sndPlayThruVol" }
+				10 { set name "sndAGCcontrol" }
+				11 { set name "sndInitSoundHW" }
+				12 { set name "dontUse1" }
+				13 { set name "dontUse2" }
+				14 { set name "dontUse3" }
+				15 { set name "sndInitSoundHW2" }
+				16 { set name "sndInitGlobals" }
+				17 { set name "sndModemSound" }
+				18 { set name "sndModemSndVol" }
+				19 { set name "sndGetSmplRate" }
+				20 { set name "sndSetSmplRate" }
+				21 { set name "sndGetInputGain" }
+				22 { set name "sndSetInputGain" }
+				23 { set name "sndPlayThruCntl" }
+				24 { set name "sndSoundHWCntl" }
+				25 { set name "sndSoundHWState" }
+				26 { set name "sndVirtualHWHook" }
+				default { set name "Unknown ($i)" }
+			}
+			set codestart [offset32code $name $infoptr]
+			if {$codestart & 1} {
+				break
+			}
+		}
+	}
+
+	endsection
+	goto $returnpos
+}
+
+proc parse_ClockPRAM {infoptr} {
+	set returnpos [pos]
+	goto [expr $infoptr - 4]
+
+	section [field_name_and_symbol "ClockPRAM header" [pos]]
+		uint16 -hex "flags"
+		set tablelength [int16 "ClockPRAM table length"]
+	endsection
+
+	section [field_name_and_symbol "ClockPRAM table" [pos]] {
+		for {set i 0} {$i < $tablelength} {incr i} {
+			switch $i {
+				0 { set name "cpInitHardware" }
+				1 { set name "cpWrProtOff" }
+				2 { set name "cpWrProtOn" }
+				3 { set name "cpRdXByte" }
+				4 { set name "cpWrXByte" }
+				5 { set name "cpXPRAMIO" }
+				6 { set name "cpXParam" }
+				7 { set name "cpReadTime" }
+				8 { set name "cpWriteTime" }
+				default { set name "Unknown ($i)" }
+			}
+			set codestart [offset32code $name $infoptr]
+			if {$codestart & 1} {
+				break
+			}
+		}
+	}
+
+	endsection
+	goto $returnpos
+}
+
+proc parse_ADBDebugUtil {infoptr} {
+	set returnpos [pos]
+	goto [expr $infoptr - 2]
+
+	section [field_name_and_symbol "ADBDebugUtil header" [pos]]
+		set tablelength [int16 "ADBDebugUtil table length"]
+	endsection
+	if {$tablelength < 20} {
+		section [field_name_and_symbol "ADBDebugUtil table" [pos]] {
+			for {set i 0} {$i < $tablelength} {incr i} {
+				switch $i {
+					0 { set name "adbInitProc" }
+					1 { set name "adbEnableKbdNMI" }
+					2 { set name "adbDebugEnter" }
+					3 { set name "adbDebugExit" }
+					4 { set name "adbDebugPoll" }
+					5 { set name "adbKeySwSecure" }
+					default { set name "Unknown ($i)" }
+				}
+				set codestart [offset32code $name $infoptr]
+				if {$codestart & 1} {
+					break
+				}
+			}
+		}
+	}
+
+	endsection
+	goto $returnpos
+}
+
+proc pmgr_flags {input} {
+	switch $input {
+		 0 { set result "PrimsTypeTable" }
+		 1 { set result "PrimsTypePtr" }
+		 2 { set result "PrimsTypeInfo" }
+		 3 { set result "PrimsTypePMgrEx" }
+		 4 { set result "PrimsTypeExp1" }
+		 5 { set result "PrimsTypeExp2" }
+		 6 { set result "PrimsTypeExp3" }
+		 7 { set result "PrimsTypeExp4" }
+		default { set result "Unknown ($input)" }
+	}
+	return $result
+}
+
+proc parse_PowerManager {infoptr} {
+	set returnpos [pos]
+	goto [expr $infoptr - 8]
+
+	section [field_name_and_symbol "PmgrPrimitivesRec" [pos]]
+		set PmgrPrimsFlags [uint32]
+		move -4
+		entry "PmgrPrimsFlags" [pmgr_flags $PmgrPrimsFlags] 4
+		move 4
+		set tablelength [expr [int32 "PmgrPrimsCount"] / 4]
+	endsection
+	section [field_name_and_symbol "PowerManager table" [pos]] {
+		for {set i 0} {$i < $tablelength} {incr i} {
+			switch $i {
+				 0 { set name "PmgrRoutineTbl" }
+				 1 { set name "PrimInfoTblPtr" }
+				 2 { set name "IdleMindTblPtr" }
+				 3 { set name "SleepTblPtr" }
+				 4 { set name "WakeTblPtr" }
+				 5 { set name "PMgrOpExcepTbl" }
+				 6 { set name "ModemTblPtr" }
+				 7 { set name "PwrDispatchTbl" }
+				 8 { set name "PmgrHookTbl" }
+				 9 { set name "PmgrCommTblPtr" }
+				10 { set name "PMgrOpTblPtr" }
+				11 { set name "BklightTblPtr" }
+				default { set name "Unknown ($i)" }
+			}
+			set codestart [offset32code $name $infoptr]
+			if {$codestart & 1} {
+				break
+			}
+		}
+	}
+
+	endsection
+	goto $returnpos
+}
+
+proc vector_address_name {input} {
+	if { 0 } {
+	} elseif { $input ==   0x64 } { set result "AutoInt1 (6)"
+	} elseif { $input ==  0x192 } { set result "Lvl1DT (8) and Lvl2DT (8)"
+	} elseif { $input ==  0x1B2 } { set result "Lvl2DT (8)"
+	} elseif { $input ==  0x2BE } { set result "ExtStsDT (4)"
+	} elseif { $input == 0x0D70 } { set result "VIA2DT (8)"
+	} else {
+		set result [format "Unknown (0x%X)" $input]
+	}
+	return $result
+}
+
+proc parse_vector_table {infoptr} {
+	set returnpos [pos]
+	goto $infoptr
+
+	set vector_address [uint32]
+	move -4
+	entry "vector address" [vector_address_name $vector_address] 4
+	move 4
+	set vector_handler_number 1
+	while {1} {
+		set codestart [offset32code "vector handler $vector_handler_number" [expr [pos] + 4]]
+		if {$codestart <= 0 || $codestart >= [len]} {
+			break
+		}
+		set vector_handler_number [expr $vector_handler_number + 1]
+		if {$vector_handler_number > 64} {
+			break
+		}
+	}
+
+	endsection
+	goto $returnpos
+}
+
+proc parse_IntHandler {infoptr} {
+	set returnpos [pos]
+	for {set numprims 10} {$numprims <= 11} {incr numprims} {
+		goto [expr $infoptr - 4]
+		section -collapsed [field_name_and_symbol [format "InterruptPrims (%d)" $numprims] [pos]] {
+			section [field_name_and_symbol "IntHandler header" [pos]]
+				uint16 -hex "flags"
+				set tablelength [int16 "count"]
+			endsection
+
+			if {$tablelength < 30} {
+				section [field_name_and_symbol "IntHandler table" [pos]] {
+					for {set i 0} {$i < $tablelength} {incr i} {
+						if {$i < $numprims} {
+							switch $i {
+								 0 { set name "intInitPostProc" }
+								 1 { set name "intDisableInts" }
+								 2 { set name "intEnableOneSec" }
+								 3 { set name "intEnableSlots" }
+								 4 { set name "intEnableSound" }
+								 5 { set name "intDisableSound" }
+								 6 { set name "intClearSound" }
+								 7 { set name "intEnableSCSI" }
+								 8 { set name "intDisableSCSI" }
+								 9 {
+									if {$numprims == 11} {
+										set name "intClearSCSIInt"
+									} else {
+										# I believe this is correct for numprims == 10.
+										# I don't know if any of the above are also incorrect for numprims == 10.
+										set name "intPowerOffProc"
+									}
+								 }
+								10 { set name "intPowerOffProc" }
+							}
+							set codestart [offset32code $name $infoptr]
+							if {$codestart & 1} {
+								break
+							}
+						} else {
+							set name [format "VectTbl (%d)" [expr $i - $numprims]]
+							set codestart [offset32section $name [expr [pos] + 4]]
+							if {$codestart != 0} {
+								parse_vector_table $codestart
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	endsection
+	goto $returnpos
+}
+
+proc parse_ImmgPrim {infoptr} {
+	set returnpos [pos]
+	goto $infoptr
+
+	bytes 2 "ImmgPrim Data"
+
+	endsection
+	goto $returnpos
+}
+
+proc parse_IconInfo {infoptr} {
+	set returnpos [pos]
+	goto $infoptr
+
+	bytes 2 "IconInfo Data"
+
+	endsection
+	goto $returnpos
+}
+
+set first_productinfo 0x7FFFFFFF
+
+proc parse_product_info {infoptr} {
+	set returnpos [pos]
+	goto $infoptr
+
+	global first_productinfo
+	if {$infoptr < $first_productinfo} {
+		set first_productinfo $infoptr
+	}
+
+	set DecoderInfoPtr [offset32section "DecoderInfoPtr -> FirstBaseAddr" $infoptr]
+	if {$DecoderInfoPtr != 0} {
+		parse_decoder_info $DecoderInfoPtr
+	}
+
+	set RamInfoPtr [offset32section "RamInfoPtr -> RamBankInfo" $infoptr]
+	if {$RamInfoPtr != 0} {
+		parse_ram_info $RamInfoPtr
+	}
+
+	set VideoInfoPtr [offset32section "VideoInfoPtr -> VideoInfo" $infoptr]
+	if {$VideoInfoPtr != 0} {
+		parse_video_info $VideoInfoPtr
+	}
+
+	set NuBusInfoPtr [offset32section "NuBusInfoPtr -> NuBusInfo" $infoptr]
+	if {$NuBusInfoPtr != 0} {
+		parse_nubus_info $NuBusInfoPtr
+	}
+
+	set HwCfgWord [uint16]
+	move -2
+	if {$HwCfgWord != 0} {
+		section "HwCfgWord" {
+			one_bit16 15 "hwCbSCSI"
+			one_bit16 14 "hwCbClock"
+			one_bit16 13 "hwCbExPRAM"
+			one_bit16 12 "hwCbFPU"
+			one_bit16 11 "hwCbMMU"
+			one_bit16 10 "hwCbADB"
+			one_bit16 9  "hwCbAUX"
+			one_bit16 8  "hwCbPwrMgr"
+			set reserved [uint16_bits 7,6,5,4,3,2,1,0]
+			if {$reserved != 0} {
+				move -2
+				uint16_bits 7,6,5,4,3,2,1,0 "(reserved)"
+			}
+		}
+	} else {
+		uint16 "HwCfgWord"
+	}
+
+	set ProductKind [uint8]
+	move -1
+	entry "ProductKind" [product_kind $ProductKind] 1
+	move 1
+
+	set DecoderKind [uint8]
+	move -1
+	entry "DecoderKind" [decoder_kind $DecoderKind] 1
+	move 1
+
+	set Rom85Word [uint16]
+	move -2
+	entry "Rom85Word" [rom85_word $Rom85Word] 2
+	move 2
+
+	set DefaultRSRCs [uint8]
+	move -1
+	entry "DefaultRSRCs" [default_rsrcs $DefaultRSRCs] 1
+	move 1
+
+	set ProductInfoVers [uint8]
+	move -1
+	entry "ProductInfoVers" [productinfo_vers $ProductInfoVers] 1
+	move 1
+
+	parse_flags "BasesValid" "ExtValid"
+
+	set product_from_via ""
+	set VIAIdMask [uint32]
+	set VIAIdMatch [uint32]
+	if {$VIAIdMask != 0} {
+		move -8
+		if {$VIAIdMask == 0x40000008} {
+			entry "VIAIdMask" "Check VIA1 PA6, VIA2 PB3" 4
+			move 4
+			set product_from_via [product_pa6pb3 $VIAIdMatch]
+			entry "VIAIdMatch" $product_from_via 4
+			move 4
+		} elseif {$VIAIdMask == 0x56000000} {
+			entry "VIAIdMask" "Check VIA1 PA6, PA4, PA2, PA1" 4
+			move 4
+			set product_from_via [product_via_pa6421 $VIAIdMatch]
+			entry "VIAIdMatch" $product_from_via 4
+			move 4
+		} else {
+			entry "VIAIdMask" [format "Unknown (0x%08X)" $VIAIdMask] 4
+			move 4
+			entry "VIAIdMatch" [format "Unknown (0x%08X)" $VIAIdMatch] 4
+			move 4
+		}
+	} else {
+		move -4
+		uint32 "(YMCA|MMC)IdMatch"
+	}
+
+	set VIA1InitPtr [offset32section "VIA1InitPtr -> VIA1Init" $infoptr]
+	if {$VIA1InitPtr != 0} {
+		parse_VIA1Init $VIA1InitPtr
+	}
+	set VIA2InitPtr [offset32section "VIA2InitPtr -> VIA2Init" $infoptr]
+	if {$VIA2InitPtr != 0} {
+		parse_VIA2Init $VIA2InitPtr
+	}
+	set SndControlPtr [offset32section "SndControlPtr -> SndBeginTable" $infoptr]
+	if {$SndControlPtr != 0} {
+		parse_SndControl $SndControlPtr
+	}
+	set ClockPRAMPtr [offset32section "ClockPRAMPtr -> ClockPRAM table" $infoptr]
+	if {$ClockPRAMPtr != 0} {
+		parse_ClockPRAM $ClockPRAMPtr
+	}
+	set ADBDebugUtilPtr [offset32section "ADBDebugUtilPtr -> ADBDebugUtil table" $infoptr]
+	if {$ADBDebugUtilPtr != 0} {
+		parse_ADBDebugUtil $ADBDebugUtilPtr
+	}
+	set PowerManagerPtr [offset32section "PowerManagerPtr -> PowerManager table" $infoptr]
+	if {$PowerManagerPtr != 0} {
+		parse_PowerManager $PowerManagerPtr
+	}
+	set IntHandlerPtr [offset32section "IntHandlerPtr -> IntHandler table" $infoptr]
+	if {$IntHandlerPtr != 0} {
+		parse_IntHandler $IntHandlerPtr
+	}
+	set ImmgPrimPtr [offset32section "ImmgPrimPtr" $infoptr]
+	if {$ImmgPrimPtr != 0} {
+		parse_ImmgPrim $ImmgPrimPtr
+	}
+
+	set product_from_cpuid ""
+	set CPUIDValue [uint16]
+	if {$CPUIDValue != 0} {
+		move -2
+		set product_from_cpuid [product_cpuid $CPUIDValue]
+		entry "CPUIDValue" $product_from_cpuid 2
+		move 2
+	}
+
+	set product [productinfo_name $ProductKind $DecoderKind $VIAIdMask $VIAIdMatch $CPUIDValue]
+	if {$product == ""} {
+		if {$ProductKind != 253} {
+			set product [product_kind $ProductKind]
+		}
+		if {$product_from_via != ""} {
+			if {$product != ""} {
+				set product "$product ; "
+			}
+			set product "$product$product_from_via"
+		}
+		if {$product_from_cpuid != ""} {
+			if {$product != ""} {
+				set product "$product ; "
+			}
+			set product "$product$product_from_cpuid"
+		}
+	}
+	if {$product != ""} {
+		sectionname $product
+	}
+
+	uint16 "padding"
+
+	set IconInfoPtr [offset32section "IconInfoPtr" $infoptr]
+	if {$IconInfoPtr != 0} {
+		parse_IconInfo $IconInfoPtr
+	}
+
+	endsection
+	goto $returnpos
+}
+
+proc parse_univ_tables {univtables} {
+	if {$univtables > 0 && $univtables < [len]} {
+		goto $univtables
+		section -collapsed "Universal Tables" {
+			sectionvalue [offsetname $univtables]
+			section "CPUIDProductLookup" {
+				set addr 1
+				while {$addr != 0} {
+					set addr [offset32section "ProductInfo" [pos]]
+					if {$addr != 0} {
+						parse_product_info $addr
+					}
+				}
+			}
+			section "ProductLookup" {
+				set addr 1
+				while {$addr != 0} {
+					set addr [offset32section "ProductInfo" [pos]]
+					if {$addr != 0} {
+						parse_product_info $addr
+					}
+				}
+			}
+			section "DecoderLookup" {
+				set done 0
+				while {!$done} {
+					set addr [offset32section "DecoderInfo" [pos]]
+					if {$addr != 0} {
+						set done [parse_decoder_info $addr]
+					} else {
+						set done true
+					}
+				}
+			}
+			global first_productinfo
+			goto $first_productinfo
+			entry "First ProductInfo" "" 1
+		}
+	}
+}
+
 #### Main parser
 
 ## Stage 1: DeclROM
@@ -1657,6 +3227,7 @@ if {$dir_start != 0} {
 			move 4
 		}
 
+		set univtables 0
 		set filename "rom_maps/$hex_checksum"
 		if { [file exists $filename] == 1 } {
 			goto 0
@@ -1670,9 +3241,16 @@ if {$dir_start != 0} {
 					continue
 				}
 				set data [split $line " "]
-				scan [lindex $data 1] %x raw_offset
+				set str_offset [lindex $data 1]
+				regsub -- "^$" $str_offset "0x" str_offset
+
+				scan $str_offset %x raw_offset
 				goto $raw_offset
-				entry [lindex $data 0] [lindex $data 1] 1
+				entry [lindex $data 0] [format "0x%X" $raw_offset] 1
+				dict set symbolsdict $raw_offset [lindex $data 0]
+				if {[lindex $data 0] == "UNIVTABLES"} {
+					set univtables $raw_offset
+				}
 			}
 			endsection
 		}
@@ -1758,6 +3336,8 @@ if {$dir_start != 0} {
 		}
 
 		endsection
+
+		parse_univ_tables $univtables
 
 		if {[universal_rom $machine]} {
 			goto $resource_data_offset
