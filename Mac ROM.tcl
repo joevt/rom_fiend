@@ -1859,12 +1859,12 @@ if {$dir_start != 0} {
 			endsection
 		} elseif {[legacy_resources $minor_ver]} {
 			goto $resource_data_offset
+			section -collapsed "Resources"
 			# TODO: Why 28? Inside Macintosh indicates this should be 16+4+2+2 = 24
 			#  It seems probable this starts with the Single Resource data (Figure 1-13) instead of a real resource fork
 			#  Thus we have the length, then a copy of the resource header (16), 6 reserved bytes, then our offsets
 			#  == 28
 			move 28
-			section -collapsed "Resources"
 			section -collapsed "Metadata"
 			set typelist_offset [uint16 "Type List Offset"]
 			set namelist_offset [uint16 "Name List Offset"]
