@@ -1808,12 +1808,9 @@ if {$dir_start != 0} {
 		endsection
 
 		if {[universal_rom $machine]} {
-			goto 0x1A
+			goto $resource_data_offset
 			section -collapsed "Resources"
 			section -collapsed "Metadata"
-			set rsrc_offset [uint32 "Resource Data Offset"]
-			# Unlike DeclROM portions, this is an offset from the base
-			goto $rsrc_offset
 			set next [uint32 "First Entry Offset"]
 			uint8 "Max Valid Index"
 			set combo_size [uint8 "Combo Mask Size"]
