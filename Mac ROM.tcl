@@ -216,17 +216,74 @@ proc fixed32 {args} {
 	return $value
 }
 
-# Read a jump vector, which consists of a jmp statement (0x4E) and an int24 address
-# TODO: Use -hex
-# TODO: Verify it's actually a valid jmp instruction
+# Read a jump vector, which may be a JMP or a BRA
 proc jmp {args} {
-	move 1
+	set thissectiondepth [sectiondepth]
+	set depth 0
+	set keepgoing true
+	set returnpos [pos]
+
 	if {[llength $args] > 0} {
-		set value [int24 [lindex $args 0]]
-	} else {
-		set value [int24]
+		set name [lindex $args 0]
 	}
-	return $value
+
+	while {$keepgoing} {
+		set startpos [pos]
+		set instruction [uint16]
+		set addr 0
+		if {$instruction == 0x4EFA} {
+			#JMP.W
+			set offset [int16]
+			set addr [expr $offset + [pos] - 2]
+		} elseif {$instruction == 0x6000} {
+			#BRA.W
+			set offset [int16]
+			set addr [expr $offset + [pos] - 2]
+		} elseif {$instruction == 0x60FF || $instruction == 0x61FF} {
+			#BRA.L, BRS.L
+			set offset [int32]
+			set addr [expr $offset + [pos] - 4]
+		} elseif {$depth == 0} {
+			move -2
+			set addr [int32]
+			set keepgoing false
+		} else {
+			if {[llength $args] > 0} {
+				move -2
+				bytes 2 "$name start"
+			}
+			break
+		}
+
+		set size [expr [pos] - $startpos]
+
+		if {$depth == 0} {
+			set returnpos [pos]
+		}
+
+		move -$size
+		if {$addr < 0 || $addr >= [len]} {
+			if {[llength $args] > 0} {
+				pointerentry $name $addr $size
+			}
+			set keepgoing false
+		} else {
+			if {[llength $args] > 0} {
+				section -collapsed $name
+				sectionvalue [offsetname $addr]
+				pointerentry $name $addr $size
+			}
+			goto $addr
+		}
+
+		incr depth
+	}
+
+	while {[sectiondepth] > $thissectiondepth} {
+		endsection
+	}
+	goto $returnpos
+	return $addr
 }
 
 proc sort_dict_by_int_value {dict args} {
