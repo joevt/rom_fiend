@@ -4681,7 +4681,136 @@ if {$dir_start != 0} {
 		if {[universal_rom $machine]} {
 			goto 0x1e
 			jmp "Eject Vector"
-			uint32 "Dispatch Table Offset"
+		}
+
+		if {
+			[universal_rom $machine] || (
+				[dict exists $symbolsdict 34] &&
+				[dict get $symbolsdict 34] == "DISPOFF"
+			)
+		} {
+			goto 0x22
+			set thissectiondepth [sectiondepth]
+			set DispTable [offset32section "Dispatch Table" 0]
+			if {$DispTable != 0} {
+				sectioncollapse
+				goto $DispTable
+
+				set addr [uint8]
+				move -1
+				if {$addr == 0x80} {
+					set compressedsuffix " (compressed)"
+					set iscompressed true
+					set prevaddr 0
+				} else {
+					set compressedsuffix ""
+					set iscompressed false
+				}
+
+				set issmalltable false
+
+				set i 0
+				while {$i < 0x600} {
+
+					if {$iscompressed} {
+						set addr [uint8]
+						set size 1
+						if {$addr == 0x80} {
+							set addr 0
+						} elseif {$addr == 0xFF} {
+							set addr [uint32]
+							set size 5
+						} elseif {$addr > 0x80} {
+							set addr [expr ($addr & 0x7F) * 2 + $prevaddr]
+						} else {
+							move -1
+							set addr [uint16]
+							set size 2
+							if {$addr == 0} {
+								endsection
+								move -2
+								uint16 "end of table"
+								break
+							} elseif {$addr >= 0x4000} {
+								set addr [expr ($addr - 32768) * 2 + $prevaddr]
+							} else {
+								set addr [expr $addr * 2 + $prevaddr]
+							}
+						}
+
+						if {$i == 0x200 && [dict exists $symbolsdict $addr] && [dict get $symbolsdict $addr] == "OPEN"} {
+							set issmalltable true
+						}
+					}
+
+					if {0} {
+					} elseif {$i == 0x000} {
+						set secname "ToolBox$compressedsuffix"
+						section -collapsed $secname
+						set fieldname "ToolBox"
+						set theformat "%s $%03X"
+						set atrap [expr - $i]
+						set next 0x400
+						set start $i
+					} elseif {$i == 0x400 || ($issmalltable && $i == 0x200)} {
+						endsection
+						set secname "OS$compressedsuffix"
+						section -collapsed $secname
+						set fieldname "OS"
+						set theformat "%s $%02X"
+						set atrap [expr - $i]
+						set subtract $i
+						set next [expr $i + 0xAF]
+						set start $i
+					} elseif {$i == 0x4AF || ($issmalltable && $i == 0x2AF)} {
+						endsection
+						set secname "OS Vectors$compressedsuffix"
+						section -collapsed $secname
+						set next [expr $i + 0x51]
+						set start $i
+					} elseif {$i == 0x500} {
+						endsection
+						set secname "OS2$compressedsuffix"
+						section -collapsed $secname
+						set fieldname "OS2"
+						set atrap [expr - $i]
+						set next 0x5AF
+						set start $i
+					} elseif {$i == 0x5AF} {
+						endsection
+						set secname "OS2 Vectors$compressedsuffix"
+						section -collapsed $secname
+						set next 0x600
+						set start $i
+					}
+
+					if {!$iscompressed} {
+						set addr [offset32code [format $theformat $fieldname [expr $i + $atrap]] 0]
+					} else {
+						dooffsetcode [format $theformat $fieldname [expr $i + $atrap]] 0 $size $addr
+						if {$addr > 0} {
+							set prevaddr $addr
+						}
+					}
+
+					if {$addr < 0 || $addr >= [len]} {
+						sectionname "$secname (invalid)"
+						if {!$iscompressed} {
+							goto [expr $DispTable + $next * 4]
+							set i $next
+							continue
+						}
+					}
+					incr i
+				}
+			}
+			while {[sectiondepth] > $thissectiondepth} {
+				endsection
+			}
+		}
+
+		if {[universal_rom $machine]} {
+			goto 0x26
 			jmp "Critical Error Vector"
 			jmp "Reset Vector"
 			uint8 "ROM Location Bit"
