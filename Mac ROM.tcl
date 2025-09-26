@@ -1719,6 +1719,8 @@ if {$dir_start != 0} {
 		}
 		endsection
 
+		goto 0
+		section -collapsed "ROM Header"
 
 		goto 4
 		# TODO: Display the reset vector value
@@ -1732,7 +1734,6 @@ if {$dir_start != 0} {
 
 		# TODO: Determine how to read pre-Universal ROM headers
 		if {[universal_rom $machine]} {
-			section -collapsed "Extended Metadata (Experimental)"
 			goto 10
 			jmp "Start Boot Vector"
 			jmp "Bad Disk Vector"
@@ -1754,8 +1755,9 @@ if {$dir_start != 0} {
 			set rom_size [uint32 "ROM Size"]
 			uint32 "Erase Happy Mac Vector"
 			uint32 "Toolbox Init Vector"
-			endsection
 		}
+
+		endsection
 
 		if {[universal_rom $machine]} {
 			goto 0x1A
