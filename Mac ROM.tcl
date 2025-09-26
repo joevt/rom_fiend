@@ -4658,8 +4658,14 @@ if {$dir_start != 0} {
 		sectionvalue [offsetname 0]
 
 		goto 4
-		# TODO: Display the reset vector value
-		uint32 -hex "Reset Vector"
+		set ResetVector [offset32section "Reset Vector" 0]
+		if {$ResetVector != 0} {
+			set thispos [pos]
+			goto $ResetVector
+			jmp "Reset Entry"
+			goto $thispos
+			endsection
+		}
 
 		# TODO: Determine how to read pre-Universal ROM headers
 		if {[universal_rom $machine]} {
@@ -4837,7 +4843,15 @@ if {$dir_start != 0} {
 		if {[universal_rom $machine]} {
 			goto 0x26
 			jmp "Critical Error Vector"
-			jmp "Reset Vector"
+		}
+
+		if {$ResetVector == 0x2A} {
+			goto 0x2a
+			jmp "Reset Entry"
+		}
+
+		if {[universal_rom $machine]} {
+			goto 0x2e
 			uint8 "ROM Location Bit"
 			move 1
 			uint32 -hex "Checksum (Chunk 1)"
