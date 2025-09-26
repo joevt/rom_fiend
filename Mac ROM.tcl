@@ -4661,12 +4661,6 @@ if {$dir_start != 0} {
 		# TODO: Display the reset vector value
 		uint32 -hex "Reset Vector"
 
-		# Both ROM eras support resource data offset
-		if {[universal_rom $machine] || [legacy_resources $minor_ver]} {
-			goto 0x1a
-			set resource_data_offset [uint32 "Resource Data Offset"]
-		}
-
 		# TODO: Determine how to read pre-Universal ROM headers
 		if {[universal_rom $machine]} {
 			goto 10
@@ -4676,7 +4670,16 @@ if {$dir_start != 0} {
 			uint8 "Patch Flags"
 			move 1
 			uint32 "Foreign OS Vector Table"
-			move 4
+		}
+
+		# Both ROM eras support resource data offset
+		if {[universal_rom $machine] || [legacy_resources $minor_ver]} {
+			goto 0x1a
+			set resource_data_offset [offset32 "Resource Data Offset" 0]
+		}
+
+		if {[universal_rom $machine]} {
+			goto 0x1e
 			jmp "Eject Vector"
 			uint32 "Dispatch Table Offset"
 			jmp "Critical Error Vector"
