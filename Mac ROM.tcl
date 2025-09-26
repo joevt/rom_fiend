@@ -142,7 +142,7 @@ proc universal_rom {version} {
 
 # Determine if a ROM uses the legacy resources format
 proc legacy_resources {version} {
-	if {$version >= 0x75 && $version <= 0x7C} {
+	if {$version >= 0x75 && $version < 0x7C} {
 		return true
 	}
 	return false
