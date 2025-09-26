@@ -1809,7 +1809,7 @@ if {$dir_start != 0} {
 			goto 0x1A
 			section -collapsed "Resources"
 			section -collapsed "Metadata"
-			set rsrc_offset [uint32 "Resource Offset"]
+			set rsrc_offset [uint32 "Resource Data Offset"]
 			# Unlike DeclROM portions, this is an offset from the base
 			goto $rsrc_offset
 			set next [uint32 "First Entry Offset"]
