@@ -1799,13 +1799,10 @@ if {$dir_start != 0} {
 			uint32 -hex "Checksum (Chunk 2)"
 			uint32 -hex "Checksum (Chunk 3)"
 			uint32 -hex "Checksum (Chunk 4)"
-			move 4
+			set rom_size [uint32 "ROM Size"]
 			uint32 "Erase Happy Mac Vector"
 			uint32 "Toolbox Init Vector"
 			endsection
-
-			goto 0x40
-			set rom_size [uint32 "ROM Size"]
 		}
 
 		if {[universal_rom $machine]} {
