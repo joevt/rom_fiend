@@ -195,17 +195,33 @@ proc fixed32 {args} {
 	return $value
 }
 
-# Read a jump vector, which consists of a jmp statement (0x4E) and an int24 address
-# TODO: Use -hex
-# TODO: Verify it's actually a valid jmp instruction
+# Read a jump vector, which may be a JMP or a BRA
 proc jmp {args} {
-	move 1
-	if {[llength $args] > 0} {
-		set value [int24 [lindex $args 0]]
+	set instruction [uint16]
+	set addr 0
+	set size 4
+	if {$instruction == 0x4EFA} {
+		#JMP.W
+		set offset [int16]
+		set addr [expr $offset + [pos] - 2]
+	} elseif {$instruction == 0x6000} {
+		#BRA.W
+		set offset [int16]
+		set addr [expr $offset + [pos] - 2]
+	} elseif {$instruction == 0x60FF || $instruction == 0x61FF} {
+		#BRA.L, BRS.L
+		set offset [int32]
+		set addr [expr $offset + [pos] - 4]
+		set size 6
 	} else {
-		set value [int24]
+		move -2
+		set addr [int32]
 	}
-	return $value
+	if {[llength $args] > 0} {
+		move -$size
+		codeentry [lindex $args 0] $addr $size
+	}
+	return $addr
 }
 
 proc sort_dict_by_int_value {dict args} {
