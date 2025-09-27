@@ -139,6 +139,14 @@ proc offset24 {name origin} {
 	return [dooffset $name $origin 3 [int24]]
 }
 
+proc offset16zero {name origin} {
+	set offset [int16]
+	set addr [expr $origin + $offset]
+	move -2
+	pointerentry $name $addr 2
+	return $addr
+}
+
 proc dooffsetcode {name origin size offset} {
 	set addr $offset
 	if {$offset != 0} {
@@ -4920,7 +4928,7 @@ if {$dir_start != 0} {
 			section -collapsed "Resources"
 			sectionvalue [offsetname $resource_data_offset]
 			section -collapsed "Metadata"
-			set next [uint32 "First Entry Offset"]
+			set next [offset32 "First Entry Offset" 0]
 			uint8 "Max Valid Index"
 			set combo_size [uint8 "Combo Mask Size"]
 			uint16 "Combo Mask Version"
@@ -4934,8 +4942,8 @@ if {$dir_start != 0} {
 				move -$combo_size
 				entry "Combo Mask" [combos $combo_data] $combo_size
 				move $combo_size
-				set next [uint32 "Next Entry Offset"]
-				set next_data [uint32 "Data Offset"]
+				set next [offset32 "Next Entry Offset" 0]
+				set next_data [offset32 "Data Offset" 0]
 				set type [str 4 macroman "Type"]
 				set id [int16 "ID"]
 				uint8 -hex "Attributes"
@@ -4975,8 +4983,8 @@ if {$dir_start != 0} {
 			#  == 28
 			move 28
 			section -collapsed "Metadata"
-			set typelist_offset [uint16 "Type List Offset"]
-			set namelist_offset [uint16 "Name List Offset"]
+			set typelist_addr [offset16zero "Type List Offset" [expr $resource_data_offset + 4]]
+			set namelist_addr [offset16zero "Name List Offset" [expr $resource_data_offset + 4]]
 			set num [uint16 "Num Types"]
 			endsection
 			for {set i 0} {$i <= $num} {incr i} {
@@ -4984,20 +4992,26 @@ if {$dir_start != 0} {
 				section -collapsed "Metadata"
 				set type [ascii 4 "Type"]
 				set num_resources [uint16 "Num Resources (0 indexed)"]
-				set list_offset [uint16 "List Offset"]
+				set list_addr [offset16zero "List Offset" $typelist_addr]
 				endsection
 				sectionname "$type"
 				set cur_pos [pos]
-				goto [expr $resource_data_offset + $typelist_offset + $list_offset + 4]
+				goto [expr $list_addr]
 				for {set j 0} {$j <= $num_resources} {incr j} {
 					section -collapsed "Resource"
 					set id [int16 "ID"]
-					set name_offset [uint16 "Name Offset"]
+					set name_offset [uint16]
+					move -2
+					if {$name_offset != 0xFFFF} {
+						set name_addr [offset16zero "Name Offset" $namelist_addr]
+					} else {
+						entry "Name Offset" "-1" 2
+						move 2
+					}
 					sectionname "$type ($id)"
 					if {$name_offset != 0xFFFF} {
 						set res_pos [pos]
-						# TODO: Why plus 4 again?
-						goto [expr $resource_data_offset + $namelist_offset + $name_offset + 4]
+						goto $name_addr
 						set name [pstr macroman "Name"]
 						if {$name != ""} {
 							sectionname "$type \[$name\] ($id)"
@@ -5005,7 +5019,7 @@ if {$dir_start != 0} {
 						goto $res_pos
 					}
 					uint8 -hex "Attributes"
-					set rsrc_offset [uint24 "Data Offset"]
+					set rsrc_offset [offset24 "Data Offset" 0]
 					set res_pos [pos]
 					# Length includes the attributes and offset, so subtract
 					goto [expr $rsrc_offset - 6]
