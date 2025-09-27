@@ -187,6 +187,21 @@ proc offset24section {name origin} {
 	return [dooffsetsection $name $origin 3 [int24]]
 }
 
+# Add support for pstr
+proc pstr {args} {
+	set len [uint8]
+	set value ""
+	if {$len > 0 && [llength $args] > 0} {
+		set value [str $len [lindex $args 0]]
+	}
+	if {[llength $args] > 1} {
+		move [expr -1 - $len]
+		entry [lindex $args 1] $value [expr $len + 1]
+		move [expr $len + 1]
+	}
+	return $value;
+}
+
 # Add support for int24s
 # TODO: A better way? Ultimately we want an int24 and HexFiend only supports uint24
 # TODO: Support -hex
@@ -930,12 +945,7 @@ proc driver_dir {offset} {
 			set control_offset [uint16 "drvrCtl"]
 			set status_offset [uint16 "drvrStatus"]
 			set close_offset [uint16 "drvrClose"]
-			set name_length [uint8 "drvrName Length"]
-			if {$name_length > 0} {
-				set name [str $name_length "macroman" "drvrName"]
-			} else {
-				set name "Unknown"
-			}
+			set name [pstr "macroman" "drvrName"]
 			endsection
 
 			section "Functions"
@@ -4929,9 +4939,8 @@ if {$dir_start != 0} {
 				set type [str 4 macroman "Type"]
 				set id [int16 "ID"]
 				uint8 -hex "Attributes"
-				set name_length [uint8 "Name Length"]
-				if {$name_length > 0} {
-					set name [str $name_length macroman "Name"]
+				set name [pstr macroman "Name"]
+				if {$name != ""} {
 					sectionname "$type \[$name\] ($id)"
 				} else {
 					sectionname "$type ($id)"
@@ -4989,9 +4998,10 @@ if {$dir_start != 0} {
 						set res_pos [pos]
 						# TODO: Why plus 4 again?
 						goto [expr $resource_data_offset + $namelist_offset + $name_offset + 4]
-						set name_length [uint8 "Name Length"]
-						set name [str $name_length "macroman" "Name"]
-						sectionname "$type \[$name\] ($id)"
+						set name [pstr macroman "Name"]
+						if {$name != ""} {
+							sectionname "$type \[$name\] ($id)"
+						}
 						goto $res_pos
 					}
 					uint8 -hex "Attributes"
