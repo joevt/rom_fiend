@@ -4977,12 +4977,13 @@ if {$dir_start != 0} {
 			goto $resource_data_offset
 			section -collapsed "Resources"
 			sectionvalue [offsetname $resource_data_offset]
+			section -collapsed "Metadata"
+			int16 "Total Number of Resources"
 			# TODO: Why 28? Inside Macintosh indicates this should be 16+4+2+2 = 24
 			#  It seems probable this starts with the Single Resource data (Figure 1-13) instead of a real resource fork
 			#  Thus we have the length, then a copy of the resource header (16), 6 reserved bytes, then our offsets
 			#  == 28
-			move 28
-			section -collapsed "Metadata"
+			goto [expr $resource_data_offset + 28]
 			set typelist_addr [offset16zero "Type List Offset" [expr $resource_data_offset + 4]]
 			set namelist_addr [offset16zero "Name List Offset" [expr $resource_data_offset + 4]]
 			set num [uint16 "Num Types"]
