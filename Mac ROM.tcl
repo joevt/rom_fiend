@@ -4667,9 +4667,14 @@ if {$dir_start != 0} {
 			endsection
 		}
 
+		goto 10
 		# TODO: Determine how to read pre-Universal ROM headers
-		if {[universal_rom $machine]} {
-			goto 10
+		if {
+			[universal_rom $machine] || (
+				[dict exists $symbolsdict 34] &&
+				[dict get $symbolsdict 34] == "DISPOFF"
+			)
+		} {
 			jmp "Start Boot Vector"
 			jmp "Bad Disk Vector"
 			move 2
@@ -4681,25 +4686,36 @@ if {$dir_start != 0} {
 				offset32code "Initializes A-trap dispatch tables" 0
 				offset32code "A-trap dispatcher" 0
 				offset32code "Handler for unimplemented traps" 0
-				offset32code "Initializes the Slot Manager" 0
-				offset32code "Initializes the Memory Manager jump tables" 0
-				offset32code "MMU switch code" 0
-				set InitRomVectors [offset32section "InitRomVectors" 0]
-				if {$InitRomVectors != 0} {
-					goto $InitRomVectors
-					set vector_num 0
-					while {1} {
-						set instruction [uint16]
-						if {$instruction != 0x61FF} {
-							break
+				if {[universal_rom $machine]} {
+					offset32code "Initializes the Slot Manager" 0
+					offset32code "Initializes the Memory Manager jump tables" 0
+					offset32code "MMU switch code" 0
+					set InitRomVectors [offset32section "InitRomVectors" 0]
+					if {$InitRomVectors != 0} {
+						goto $InitRomVectors
+						set vector_num 0
+						while {1} {
+							set instruction [uint16]
+							if {$instruction != 0x61FF} {
+								break
+							}
+							move -2
+							jmp [format "Vector %d" $vector_num]
+							incr vector_num
 						}
-						move -2
-						jmp [format "Vector %d" $vector_num]
-						incr vector_num
+						endsection
 					}
-					endsection
 				}
 				endsection
+			}
+		} else {
+			for {set i 0} {$i < 4} {incr i} {
+				if {[int16] == 0x6000} {
+					move -2
+					jmp "Unknown BRA"
+				} else {
+					move 2
+				}
 			}
 		}
 
@@ -4709,9 +4725,17 @@ if {$dir_start != 0} {
 			set resource_data_offset [offset32 "Resource Data Offset" 0]
 		}
 
-		if {[universal_rom $machine]} {
-			goto 0x1e
+		goto 0x1e
+		if {
+			[universal_rom $machine] || (
+				[dict exists $symbolsdict 34] &&
+				[dict get $symbolsdict 34] == "DISPOFF"
+			)
+		} {
 			jmp "Eject Vector"
+		} elseif {[int16] == 0x4EFA} {
+			move -2
+			jmp "Unknown JMP"
 		}
 
 		if {
@@ -4840,7 +4864,12 @@ if {$dir_start != 0} {
 			}
 		}
 
-		if {[universal_rom $machine]} {
+		if {
+			[universal_rom $machine] || (
+				[dict exists $symbolsdict 38] &&
+				[dict get $symbolsdict 38] == "CRITICAL"
+			)
+		} {
 			goto 0x26
 			jmp "Critical Error Vector"
 		}
