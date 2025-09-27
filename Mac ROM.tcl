@@ -3473,7 +3473,7 @@ if {$dir_start != 0} {
 			uint32 -hex "Checksum (Chunk 2)"
 			uint32 -hex "Checksum (Chunk 3)"
 			uint32 -hex "Checksum (Chunk 4)"
-			set rom_size [uint32 "ROM Size"]
+			set rom_size [uint32 -hex "ROM Size"]
 			offset32code "Erase Happy Mac Vector" 0
 			offset32code "Toolbox Init Vector" 0
 		}
