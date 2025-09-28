@@ -4494,13 +4494,7 @@ if {$magic == 0x5A932BC7} {
 	set length [uint32 "Length"]
 
 	move -7
-	set offset [int24 "DirectoryOffset"]
-	set dir_start [expr $end_of_rom - 20 + $offset]
-	move -3
-	entry "(Computed Directory Start)" $dir_start 3
-	move 3
-
-	section "Directory"
+	set dir_start [offset24section "Directory" [expr $end_of_rom - 20]]
 	parse_rsrc_dir $dir_start
 	endsection
 	endsection
@@ -4515,22 +4509,28 @@ if {$extended_magic == 0x5A932BC7} {
 	section -collapsed "Extended DeclROM"
 	move -4
 	hex 4 "TestPattern"
-	move -11
-	set offset [int24 "Super DirectoryOffset"]
-	set superdir_start [expr $end_of_rom - 32 + $offset]
-	move -3
-	entry "(Computed Directory Start)" $superdir_start 3
-	move -5
+	move -16
+	section -collapsed "Extended Directory"
 
 	section -collapsed "SuperInit"
 	section -collapsed "Metadata"
 	set rsrc_type [uint8 "Type"]
 	set offset [int24 "Offset"]
+	set next_directory_item_pos [pos]
 	endsection
+	sectionname "SuperInit ($rsrc_type)"
 	exec_block [expr $offset-4]
 	endsection
 
-	goto $superdir_start
+	goto $next_directory_item_pos
+	section -collapsed "SuperDirectory"
+	section -collapsed "Metadata"
+	set rsrc_type [uint8 "Type"]
+	set offset [int24 "Offset"]
+	set next_directory_item_pos [pos]
+	endsection
+	sectionname "Super Directory ($rsrc_type)"
+	goto [expr $end_of_rom - 32 + $offset]
 	# This is an sResource of pointers to sResource directories for each board
 	# Loop over the top level sResource entries
 	set rsrc_offset 1
@@ -4555,6 +4555,28 @@ if {$extended_magic == 0x5A932BC7} {
 		}
 		endsection
 	}
+	endsection
+
+	while (1) {
+		goto $next_directory_item_pos
+		section "Directory"
+		section -collapsed "Metadata"
+		set rsrc_type [uint8 "Type"]
+		set rsrc_offset [int24 "Offset"]
+		set next_directory_item_pos [pos]
+		endsection
+		if {$rsrc_type == 0xFF} {
+			sectionname "Terminator (255)"
+		} else {
+			sectionname "Directory ($rsrc_type)"
+		}
+		endsection
+		if {$rsrc_type == 0xFF} {
+			break
+		}
+	}
+
+	endsection
 	endsection
 }
 
