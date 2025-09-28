@@ -1989,12 +1989,4 @@ if {$dir_start != 0} {
 			endsection
 		}
 	}
-
-	# Because every offset after the directory is a uint, we know everything before it must be outside the DeclROM
-	# TODO: That's not true? In practice it seems the other data is always after the directory, but it doesn't seem like it has to be
-	goto 0
-	if {$dir_start > 0} {
-		bytes $dir_start "Non DeclROM Data"
-	}
-
 }
