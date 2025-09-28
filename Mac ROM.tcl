@@ -1100,12 +1100,25 @@ proc exec_block {offset} {
 	set temp_location [pos]
 	move $offset
 	set length [uint32 "Length"]
-	uint8 "Revision"
+	set revision [uint8]
+	move -1
+	if {$revision == 2} {
+		entry "Revision" "sExec2 (2)" 1
+		move 1
+	} else {
+		uint8 "Revision"
+	}
 	set raw_cpu [uint8]
 	move -1
 	entry "CPU ID" [cpu_type $raw_cpu] 1
-	move 4
-	set second_offset [int24 "Offset"]
+	move 1
+	set reserved [uint16]
+	if {$reserved != 0} {
+		move -2
+		entry "Reserved" [format "0x%X" $reserved] 2
+		move 2
+	}
+	set second_offset [int32 "Offset"]
 	move -4
 
 	move $second_offset
