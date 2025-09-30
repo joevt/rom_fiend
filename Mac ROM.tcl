@@ -1361,7 +1361,7 @@ proc parse_rsrc_dir {directory} {
 							exec_block $sub_rsrc_offset
 						}
 						64 {
-							sectionname "sGammaDir (54)"
+							sectionname "sGammaDir (64)"
 							gamma_dir $sub_rsrc_offset
 						}
 						65 {
