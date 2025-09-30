@@ -1026,23 +1026,67 @@ proc gamma_dir {offset} {
 	set gamma_rsrc_offset 0x01
 	set gamma_rsrc_type 0x00
 	while {[expr $gamma_rsrc_offset != 0x000000 && $gamma_rsrc_type != 0xFF]} {
-		section -collapsed "Gamma Entry"
+		section -collapsed "Unnamed Gamma Entry"
 		set gamma_rsrc_type [uint8 "Type"]
 		set gamma_rsrc_offset [int24 "Offset"]
 		if {$gamma_rsrc_type == 0xFF} {
 			sectionname "Terminator (255)"
 		} else {
+			sectionname "Unnamed Gamma Entry ($gamma_rsrc_type)"
 			# TODO: Something is weird, sometimes we get bad entries with nonsense offsets
-			set gamma_rsrc_entry_return [pos]
-			move [expr $gamma_rsrc_offset-4]
-			set start [pos]
-			set length [uint32 "Record Length"]
-			uint16 "ID"
-			set name [cstr "macroman" "Name"]
-			sectionname $name
-			set end [pos]
-			bytes [expr $length - ($end - $start)] "Gamma Image"
-			goto $gamma_rsrc_entry_return
+			set new_pos [expr [pos] - 4 + $gamma_rsrc_offset]
+			if {$new_pos > 0 && $new_pos < [len]} {
+				set gamma_rsrc_entry_return [pos]
+				move [expr $gamma_rsrc_offset-4]
+				set start [pos]
+				set length [int32 "Record Length"]
+				while {1} {
+					if {$length < 0} {
+						error_entry "Length is negative" 1
+						set gamma_rsrc_type 255
+						break
+					}
+					if {$length < 4} {
+						error_entry "Length is too small to get Record Length" 1
+						set gamma_rsrc_type 255
+						break
+					}
+					if {$length < 6} {
+						error_entry "Length is too small to get ID" 1
+						set gamma_rsrc_type 255
+						break
+					}
+					uint16 "ID"
+					if {$length < 7} {
+						error_entry "Length is too small to get first character of name" 1
+						set gamma_rsrc_type 255
+						break
+					}
+					set name [cstr "macroman" "Name"]
+					set end [pos]
+					set sgamma_min_len [expr $end - $start]
+					if {$sgamma_min_len < 100} {
+						sectionname $name
+					}
+					if {$length < $sgamma_min_len} {
+						error_entry "Length is too small to get all characters of name" 1
+						set gamma_rsrc_type 255
+					} elseif {$length == $sgamma_min_len} {
+						error_entry "Length is too small to get Gamma Image" 1
+						set gamma_rsrc_type 255
+					} elseif {$length < [len] && $start < [len] - $length} {
+						bytes [expr $length - $sgamma_min_len] "Gamma Image"
+					} else {
+						error_entry "Length is too big to get all of Gamma Image"
+						set gamma_rsrc_type 255
+					}
+					break
+				}
+				goto $gamma_rsrc_entry_return
+			} else {
+				error_entry "Irrational offset: $gamma_rsrc_offset"
+				set gamma_rsrc_type 255
+			}
 		}
 		endsection
 	}
