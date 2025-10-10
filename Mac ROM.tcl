@@ -1483,7 +1483,7 @@ proc parse_rsrc_dir {directory} {
 							# TODO: Is this the correct offset?
 							move $sub_rsrc_offset
 							# Size per cards documentation, page 184 (225)
-							bytes 128 "Icon"
+							icon "Icon"
 						}
 						4 {
 							sectionname "sRsrcDrvrDir (4)"
