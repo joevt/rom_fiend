@@ -1969,7 +1969,7 @@ if {$dir_start != 0} {
 			move $data_start
 			bytes [expr $data_end - $data_start] "Disk Image"
 			endsection
-			set edisk_count [expr $edisk_count + 1]
+			incr edisk_count
 		}
 		set edisk_offset [expr $edisk_offset + 0x10000]
 	}
