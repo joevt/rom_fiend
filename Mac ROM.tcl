@@ -793,11 +793,21 @@ proc driver_dir {offset} {
 						goto $driver_region_start
 						move $current_offset
 						# TODO: We can read right off the edge so catch errors
-						set status [catch {
-							bytes [expr $value-$current_offset] $current_type
-						} err]
-						if {$status} {
-							error_entry $err
+						set function_size [expr $value-$current_offset]
+						if {$function_size == 0} {
+							set status [catch {
+								bytes 1 $current_type
+							} err]
+							if {$status} {
+								error_entry $err
+							}
+						} else {
+							set status [catch {
+								bytes $function_size $current_type
+							} err]
+							if {$status} {
+								error_entry $err
+							}
 						}
 						# Debugging:
 						#entry $current_type "$value - $current_offset"
