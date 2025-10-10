@@ -4611,6 +4611,9 @@ if {$dir_start != 0} {
 			endsection
 		}
 
+		goto 22
+		set ForeignOS [uint32]
+
 		goto 8
 		section "Versions"
 		# TODO: Also format in the $XXXX format used in some places
@@ -4630,8 +4633,10 @@ if {$dir_start != 0} {
 			set rom_release [uint16]
 			move -2
 			entry "Minor Version" [rom_release $rom_release] 2
-			goto 76
-			uint16 "Sub Release"
+			if {$ForeignOS >= 78} {
+				goto 76
+				uint16 "Sub Release"
+			}
 		}
 
 		# Read the date from old-style ROMs
@@ -4888,8 +4893,12 @@ if {$dir_start != 0} {
 			uint32 -hex "Checksum (Chunk 3)"
 			uint32 -hex "Checksum (Chunk 4)"
 			set rom_size [uint32 -hex "ROM Size"]
-			offset32code "Erase Happy Mac Vector" 0
-			offset32code "Toolbox Init Vector" 0
+			if {$ForeignOS >= 72} {
+				offset32code "Erase Happy Mac Vector" 0
+			}
+			if {$ForeignOS >= 76} {
+				offset32code "Toolbox Init Vector" 0
+			}
 		}
 
 		endsection
