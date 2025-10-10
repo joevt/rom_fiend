@@ -8,6 +8,19 @@
 hf_min_version_required 2.15
 big_endian
 
+proc error_entry {args} {
+	set returnpos [pos]
+	if {[pos] >= [len]} {
+		goto [expr [len] - 1]
+	}
+	if {[llength $args] > 1} {
+		entry "ERROR" [lindex $args 0] [lindex $args 1]
+	} else {
+		entry "ERROR" [lindex $args 0]
+	}
+	goto $returnpos
+}
+
 #### ROM location setup
 
 # ROMs larger than 3MiB have their DeclROMs at the 3MiB boundary
@@ -25,7 +38,7 @@ if {[len] > 3145728} {
 goto 2
 set magic [uint32]
 if {$magic == 0x38D46CA5} {
-	entry "ERROR" "ROM must be byte-wise reversed and XOR'd with 0xFF"
+	error_entry "ROM must be byte-wise reversed and XOR'd with 0xFF"
 	return
 }
 
@@ -37,13 +50,13 @@ while {$offset > 0} {
 		set end_of_rom [expr $offset]
 		break
 	} elseif {$magic == 0x935AC72B} {
-		entry "ERROR" "ROM must be byte-swapped from little-endian"
+		error_entry "ROM must be byte-swapped from little-endian"
 		return
 	} elseif {$magic == 0xA56CD438} {
-		entry "ERROR" "ROM must be XOR'd with 0xFF"
+		error_entry "ROM must be XOR'd with 0xFF"
 		return
 	} elseif {$magic == 0x7878} {
-		entry "ERROR" "ROM is repeated across bytelanes, take every 4th byte"
+		error_entry "ROM is repeated across bytelanes, take every 4th byte"
 		return
 	}
 	set offset [expr $offset - 0x10000]
@@ -776,7 +789,7 @@ proc driver_dir {offset} {
 							bytes [expr $value-$current_offset] $current_type
 						} err]
 						if {$status} {
-							entry "ERROR" $err
+							error_entry $err
 						}
 						# Debugging:
 						#entry $current_type "$value - $current_offset"
@@ -796,7 +809,7 @@ proc driver_dir {offset} {
 						bytes [expr $driver_length-4-$current_offset+12] $current_type
 					} err]
 					if {$status} {
-						entry "ERROR" $err
+						error_entry $err
 					}
 					# Debugging:
 					#entry $current_type "$value - $current_offset"
@@ -1483,7 +1496,7 @@ proc parse_rsrc_dir {directory} {
 							# TODO: We should check this everywhere, but for now this is a quick fix for the Futura SX ROM
 							if {[valid_rsrc_dir_offset $sub_rsrc_offset] == 0} {
 								sectionvalue "ERROR"
-								entry "ERROR" "Irrational offset: $sub_rsrc_offset"
+								error_entry "Irrational offset: $sub_rsrc_offset"
 							} else {
 								set vid_bounds [vid_mode $sub_rsrc_offset]
 								# TODO: Redundantly setting part of the section name
@@ -1517,7 +1530,7 @@ proc parse_rsrc_dir {directory} {
 				} err]
 				if {$status} {
 					sectionvalue "ERROR"
-					entry "ERROR" $err 1
+					error_entry $err 1
 					# TODO: Sometimes we haven't started a section when we error which causes us to crash anyway -- need to fix that we don't over-close sections
 					#endsection
 				}
