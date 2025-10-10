@@ -21,6 +21,14 @@ proc error_entry {args} {
 	goto $returnpos
 }
 
+proc checksectionroot {} {
+	set thedepth [sectiondepth]
+	sectionroot
+	if {$thedepth != 0} {
+		error_entry "Section depth was not 0"
+	}
+}
+
 #### ROM location setup
 
 # ROMs larger than 3MiB have their DeclROMs at the 3MiB boundary
@@ -1554,6 +1562,7 @@ proc parse_rsrc_dir {directory} {
 #### Main parser
 
 ## Stage 1: DeclROM
+checksectionroot
 
 set dir_start -1
 
@@ -1595,6 +1604,7 @@ if {$magic == 0x5A932BC7} {
 }
 
 ## Stage 2: Extended DeclROM
+checksectionroot
 
 goto [expr $end_of_rom-24]
 set extended_magic [uint32]
@@ -1649,6 +1659,7 @@ if {$extended_magic == 0x5A932BC7} {
 }
 
 ## Stage 3: System ROM
+checksectionroot
 
 # TODO: This isn't quite right with Extended Format
 if {$dir_start != 0} {
@@ -2004,3 +2015,6 @@ if {$dir_start != 0} {
 		}
 	}
 }
+
+## Done
+checksectionroot
