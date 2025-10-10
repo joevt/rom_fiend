@@ -670,6 +670,7 @@ proc vendor_info {offset} {
 	section "Vendor Info"
 	set vendor_rsrc_offset 0x01
 	set vendor_rsrc_type 0x00
+	set vendorid "VendorID not specified"
 	while {[expr $vendor_rsrc_offset != 0x000000 && $vendor_rsrc_type != 0xFF]} {
 		section "Metadata"
 		sectioncollapse
