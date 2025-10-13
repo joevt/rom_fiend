@@ -1773,10 +1773,10 @@ if {$dir_start != 0} {
 				if {$line == ""} {
 					continue
 				}
-				set data [split $line " "]
-				scan [lindex $data 1] %x raw_offset
+				regexp -- {^(.+?) (0x[0-9A-Fa-f]+) l$} $line -> name str_offset
+				scan $str_offset %x raw_offset
 				goto $raw_offset
-				entry [lindex $data 0] [lindex $data 1] 1
+				entry $name [format "0x%X" $raw_offset] 1
 			}
 			endsection
 		}
