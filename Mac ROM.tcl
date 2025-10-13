@@ -1829,7 +1829,7 @@ if {$dir_start != 0} {
 				set next [uint32 "Next Entry Offset"]
 				set next_data [uint32 "Data Offset"]
 				set type [str 4 macroman "Type"]
-				set id [uint16 "ID"]
+				set id [int16 "ID"]
 				uint8 -hex "Attributes"
 				set name_length [uint8 "Name Length"]
 				if {$name_length > 0} {
@@ -1883,7 +1883,7 @@ if {$dir_start != 0} {
 				goto [expr $resource_data_offset + $typelist_offset + $list_offset + 4]
 				for {set j 0} {$j <= $num_resources} {incr j} {
 					section -collapsed "Resource"
-					set id [uint16 "ID"]
+					set id [int16 "ID"]
 					set name_offset [uint16 "Name Offset"]
 					sectionname "$type ($id)"
 					if {$name_offset != 0xFFFF} {
