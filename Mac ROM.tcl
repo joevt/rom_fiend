@@ -1875,12 +1875,12 @@ proc productinfo_name {boxnumber DecoderKind viamask viaid cpuid} {
 	} elseif { $boxnumber == 116 } { set result "InfoSTPQuadra650"
 	} elseif { $boxnumber == 117 && $viamask == 0x56000000 && $viaid == 0x12000000 } { set result "InfoSTPQuadra800"
 	} elseif { $boxnumber == 117 && $viamask == 0x56000000 && $viaid == 0x16000000 } { set result "InfoSTPQuadra40F"
-	} elseif { $boxnumber == 253 && $DecoderKind ==  0 } { set result "InfoUnknownUnknown"
-	} elseif { $boxnumber == 253 && $DecoderKind ==  5 } { set result "InfoMDUUnknown"
-	} elseif { $boxnumber == 253 && $DecoderKind ==  6 } { set result "InfoOSSUnknown"
-	} elseif { $boxnumber == 253 && $DecoderKind ==  7 } { set result "InfoVISAUnknown"
-	} elseif { $boxnumber == 253 && $DecoderKind ==  9 } { set result "InfoJAWSUnknown"
-	} elseif { $boxnumber == 253 && $DecoderKind == 12 } { set result "InfoNiagraUnknown"
+	} elseif { $boxnumber == -3 && $DecoderKind ==  0 } { set result "InfoUnknownUnknown"
+	} elseif { $boxnumber == -3 && $DecoderKind ==  5 } { set result "InfoMDUUnknown"
+	} elseif { $boxnumber == -3 && $DecoderKind ==  6 } { set result "InfoOSSUnknown"
+	} elseif { $boxnumber == -3 && $DecoderKind ==  7 } { set result "InfoVISAUnknown"
+	} elseif { $boxnumber == -3 && $DecoderKind ==  9 } { set result "InfoJAWSUnknown"
+	} elseif { $boxnumber == -3 && $DecoderKind == 12 } { set result "InfoNiagraUnknown"
 	} else { set result ""}
 	return $result
 }
@@ -1934,141 +1934,180 @@ proc product_cpuid {input} {
 }
 
 proc product_kind {input} {
+	set result1 ""
+	set result2 ""
+
+	# Convert input to gestalt numbers by adding 6
+	set input [expr $input + 6]
+
 	switch $input {
-		253 { set result "boxUnknown" }
-		254 { set result "boxPlus" }
-		255 { set result "boxSE" }
-		  0 { set result "boxMacII" }
-		  1 { set result "boxMacIIx" }
-		  2 { set result "boxMacIIcx" }
-		  3 { set result "boxSE30" }
-		  4 { set result "boxPortable" }
-		  5 { set result "boxMacIIci" }
-		  6 { set result "boxFourSquare" }
-		  7 { set result "boxMacIIfx" }
-		  8 { set result "boxAuroraCX16" }
-		  9 { set result "boxAuroraSE25" }
-		 10 { set result "boxAuroraSE16" }
-		 11 { set result "boxMacClassic" }
-		 12 { set result "boxMacIIsi" }
-		 13 { set result "boxMacLC" }
-		 14 { set result "boxQuadra900" }
-		 15 { set result "boxPowerBook170" }
-		 16 { set result "boxQuadra700" }
-		 17 { set result "boxClassicII" }
-		 18 { set result "boxPowerBook100" }
-		 19 { set result "boxPowerBook140" }
-		 20 { set result "boxQuadra950" }
-		 21 { set result "boxLCIII" }
-		 22 { set result "boxSoftmacSUN" }
-		 23 { set result "boxPowerBookDuo210" }
-		 24 { set result "boxCentris650" }
-		 25 { set result "boxColumbia" }
-		 26 { set result "boxPowerBookDuo230" }
-		 27 { set result "boxPowerBook180" }
-		 28 { set result "boxPowerBook160" }
-		 29 { set result "boxQuadra800" }
-		 30 { set result "boxQuadra650" }
-		 31 { set result "boxMacLCII" }
-		 32 { set result "boxPowerBookDuo250" }
-		 33 { set result "boxDBLite20" }
-		 34 { set result "boxVail16" }
-		 35 { set result "boxCarnation25" }
-		 36 { set result "boxCarnation16" }
-		 37 { set result "boxCyclone33" }
-		 38 { set result "boxBrazil16L" }
-		 39 { set result "boxBrazil32L" }
-		 40 { set result "boxBrazil16F" }
-		 41 { set result "boxBrazil32F" }
-		 42 { set result "boxBrazilC" }
-		 43 { set result "boxSlice" }
-		 44 { set result "boxMonet" }
-		 45 { set result "boxWombat40" }
-		 46 { set result "boxCentris610" }
-		 47 { set result "boxQuadra610" }
-		 48 { set result "boxPowerBook145" }
-		 49 { set result "boxBrazil32cF" }
-		 50 { set result "boxHook" }
-		 51 { set result "boxUnused" }
-		 52 { set result "boxWombat20" }
-		 53 { set result "boxWombat40F" }
-		 54 { set result "boxCentris660AV" }
-		 55 { set result "boxPDM|boxRiscQuadra700" }
-		 56 { set result "boxVail33" }
-		 57 { set result "boxWLCD33" }
-		 58 { set result "boxPDM66F" }
-		 59 { set result "boxPDM80F" }
-		 60 { set result "boxPDM100F" }
-		 61 { set result "boxTNTProto1" }
-		 62 { set result "boxTesseractF" }
-		 63 { set result "boxTesseractC" }
-		 64 { set result "boxJust930" }
-		 65 { set result "boxHokusai" }
-		 66 { set result "boxBlackbird" }
-		 67 { set result "boxBlackbirdLC" }
-		 68 { set result "boxPDMEvt1" }
-		 69 { set result "boxPDM50WLCD" }
-		 70 { set result "boxYeagerFSTN" }
-		 71 { set result "boxPowerBookDuo270C" }
-		 72 { set result "boxQuadra840AV" }
-		 73 { set result "boxTempest33" }
-		 74 { set result "boxHook33" }
-		 75 { set result "boxSlice25" }
-		 76 { set result "boxRiscCentris650" }
-		 77 { set result "boxSlice33" }
-		 78 { set result "boxNorad" }
-		 79 { set result "boxBudMan" }
-		 80 { set result "boxPrimus20" }
-		 81 { set result "boxOptimus20" }
-		 82 { set result "boxHookTV" }
-		 83 { set result "boxLC475" }
-		 84 { set result "boxPrimus33" }
-		 85 { set result "boxOptimus25" }
-		 86 { set result "boxLC575" }
-		 87 { set result "boxAladdin20" }
-		 88 { set result "boxQuadra605" }
-		 89 { set result "boxAladdin33" }
-		 90 { set result "boxMalcolm25" }
-		 91 { set result "boxMalcolm33" }
-		 92 { set result "boxSlimus25" }
-		 93 { set result "boxSlimus33" }
-		 94 { set result "boxPDM66WLCD" }
-		 95 { set result "boxPDM80WLCD" }
-		 96 { set result "boxYeagerG" }
-		 97 { set result "boxYeagerC" }
-		 98 { set result "boxRiscQuadra900" }
-		 99 { set result "boxRiscQuadra950" }
-		100 { set result "boxRiscCentris610" }
-		101 { set result "boxRiscQuadra800" }
-		102 { set result "boxRiscQuadra610" }
-		103 { set result "boxRiscQuadra650" }
-		104 { set result "boxRiscTempest" }
-		105 { set result "boxPDM50L" }
-		106 { set result "boxPDM66L" }
-		107 { set result "boxPDM80L" }
-		108 { set result "boxBlackbirdBFD" }
-		109 { set result "boxJedi" }
-		110 { set result "boxSTPQ700" }
-		111 { set result "boxSTPQ900" }
-		112 { set result "boxSTPQ950" }
-		113 { set result "boxSTPC610" }
-		114 { set result "boxSTPC650" }
-		115 { set result "boxSTPQ610" }
-		116 { set result "boxSTPQ650" }
-		117 { set result "boxSTPQ800" }
-		118 { set result "boxAJ" }
-		119 { set result "boxAJ80" }
-		120 { set result "boxMalcolmBB" }
-		121 { set result "boxMalcolmBB80" }
-		122 { set result "boxM2" }
-		123 { set result "boxM280" }
-		124 { set result "boxSoftmacHP" }
-		125 { set result "boxSoftmacIBM" }
-		126 { set result "boxSoftmacAUX" }
-		127 { set result "boxExtended" }
-		default { set result "Unknown" }
+#		   1 {set result2 "gestaltClassic" }
+#		   2 {set result2 "gestaltMacXL" }
+		   3 {
+			set result1 "boxUnknown"
+#			set result2 "gestaltMac512KE"
+		   }
+		   4 {set result1 "boxPlus"; set result2 "gestaltMacPlus"}
+		   5 {set result1 "boxSE"; set result2 "gestaltMacSE"}
+		   6 {set result1 "boxMacII"; set result2 "gestaltMacII"}
+		   7 {set result1 "boxMacIIx"; set result2 "gestaltMacIIx"}
+		   8 {set result1 "boxMacIIcx"; set result2 "gestaltMacIIcx"}
+		   9 {set result1 "boxSE30"; set result2 "gestaltMacSE030"}
+		  10 {set result1 "boxPortable"; set result2 "gestaltPortable"}
+		  11 {set result1 "boxMacIIci"; set result2 "gestaltMacIIci"}
+		  12 {set result1 "boxFourSquare"; set result2 "gestaltPowerMac8100_120"}
+		  13 {set result1 "boxMacIIfx"; set result2 "gestaltMacIIfx"}
+		  14 {set result1 "boxAuroraCX16" }
+		  15 {set result1 "boxAuroraSE25" }
+		  16 {set result1 "boxAuroraSE16" }
+		  17 {set result1 "boxMacClassic"; set result2 "gestaltMacClassic"}
+		  18 {set result1 "boxMacIIsi"; set result2 "gestaltMacIIsi"}
+		  19 {set result1 "boxMacLC"; set result2 "gestaltMacLC"}
+		  20 {set result1 "boxQuadra900"; set result2 "gestaltMacQuadra900"}
+		  21 {set result1 "boxPowerBook170"; set result2 "gestaltPowerBook170"}
+		  22 {set result1 "boxQuadra700"; set result2 "gestaltMacQuadra700"}
+		  23 {set result1 "boxClassicII"; set result2 "gestaltClassicII"}
+		  24 {set result1 "boxPowerBook100"; set result2 "gestaltPowerBook100"}
+		  25 {set result1 "boxPowerBook140"; set result2 "gestaltPowerBook140"}
+		  26 {set result1 "boxQuadra950"; set result2 "gestaltMacQuadra950"}
+		  27 {set result1 "boxLCIII"; set result2 "gestaltMacLCIII"}
+		  28 {set result1 "boxSoftmacSUN" }
+		  29 {set result1 "boxPowerBookDuo210"; set result2 "gestaltPowerBookDuo210"}
+		  30 {set result1 "boxCentris650"; set result2 "gestaltMacCentris650"}
+		  31 {set result1 "boxColumbia" }
+		  32 {set result1 "boxPowerBookDuo230"; set result2 "gestaltPowerBookDuo230"}
+		  33 {set result1 "boxPowerBook180"; set result2 "gestaltPowerBook180"}
+		  34 {set result1 "boxPowerBook160"; set result2 "gestaltPowerBook160"}
+		  35 {set result1 "boxQuadra800"; set result2 "gestaltMacQuadra800"}
+		  36 {set result1 "boxQuadra650"; set result2 "gestaltMacQuadra650"}
+		  37 {set result1 "boxMacLCII"; set result2 "gestaltMacLCII"}
+		  38 {set result1 "boxPowerBookDuo250"; set result2 "gestaltPowerBookDuo250"}
+		  39 {set result1 "boxDBLite20"; set result2 "gestaltAWS9150_80"}
+		  40 {set result1 "boxVail16"; set result2 "gestaltPowerMac8100_110"}
+		  41 {set result1 "boxCarnation25"; set result2 "gestaltPowerMac5200"}
+		  42 {set result1 "boxCarnation16"; set result2 "gestaltPowerMac6200"}
+		  43 {set result1 "boxCyclone33" }
+		  44 {set result1 "boxBrazil16L"; set result2 "gestaltMacIIvi"}
+		  45 {set result1 "boxBrazil32L"; set result2 "gestaltMacIIvm"}
+		  46 {set result1 "boxBrazil16F" }
+		  47 {set result1 "boxBrazil32F"; set result2 "gestaltPowerMac7100_80"}
+		  48 {set result1 "boxBrazilC"; set result2 "gestaltMacIIvx"}
+		  49 {set result1 "boxSlice"; set result2 "gestaltMacColorClassic"}
+		  50 {set result1 "boxMonet"; set result2 "gestaltPowerBook165c"}
+		  51 {set result1 "boxWombat40" }
+		  52 {set result1 "boxCentris610"; set result2 "gestaltMacCentris610"}
+		  53 {set result1 "boxQuadra610"; set result2 "gestaltMacQuadra610"}
+		  54 {set result1 "boxPowerBook145"; set result2 "gestaltPowerBook145"}
+		  55 {set result1 "boxBrazil32cF"; set result2 "gestaltPowerMac8100_100"}
+		  56 {set result1 "boxHook"; set result2 "gestaltMacLC520"}
+		  57 {set result1 "boxUnused"; set result2 "gestaltAWS9150_120"}
+		  58 {set result1 "boxWombat20"; set result2 "gestaltPowerMac6400"}
+		  59 {set result1 "boxWombat40F" }
+		  60 {set result1 "boxCentris660AV"; set result2 "gestaltMacCentris660AV"}
+		  61 {set result1 "boxPDM|boxRiscQuadra700" }
+		  62 {set result1 "boxVail33"; set result2 "gestaltPerforma46x"}
+		  63 {set result1 "boxWLCD33" }
+		  64 {set result1 "boxPDM66F" }
+		  65 {set result1 "boxPDM80F"; set result2 "gestaltPowerMac8100_80"}
+		  66 {set result1 "boxPDM100F" }
+		  67 {set result1 "boxTNTProto1"; set result2 "gestaltPowerMac9500"}
+		  68 {set result1 "boxTesseractF"; set result2 "gestaltPowerMac7500"}
+		  69 {set result1 "boxTesseractC"; set result2 "gestaltPowerMac8500"}
+		  70 {set result1 "boxJust930" }
+		  71 {set result1 "boxHokusai"; set result2 "gestaltPowerBook180c"}
+		  72 {set result1 "boxBlackbird"; set result2 "gestaltPowerBook520"}
+		  73 {set result1 "boxBlackbirdLC" }
+		  74 {set result1 "boxPDMEvt1"; set result2 "gestaltPowerMac5400"}
+		  75 {set result1 "boxPDM50WLCD"; set result2 "gestaltPowerMac6100_60"}
+		  76 {set result1 "boxYeagerFSTN" }
+		  77 {set result1 "boxPowerBookDuo270C"; set result2 "gestaltPowerBookDuo270c"}
+		  78 {set result1 "boxQuadra840AV"; set result2 "gestaltMacQuadra840AV"}
+		  79 {set result1 "boxTempest33" }
+		  80 {set result1 "boxHook33"; set result2 "gestaltPerforma550"}
+		  81 {set result1 "boxSlice25" }
+		  82 {set result1 "boxRiscCentris650" }
+		  83 {set result1 "boxSlice33" }
+		  84 {set result1 "boxNorad"; set result2 "gestaltPowerBook165"}
+		  85 {set result1 "boxBudMan"; set result2 "gestaltPowerBook190"}
+		  86 {set result1 "boxPrimus20" }
+		  87 {set result1 "boxOptimus20" }
+		  88 {set result1 "boxHookTV"; set result2 "gestaltMacTV"}
+		  89 {set result1 "boxLC475"; set result2 "gestaltMacLC475"}
+		  90 {set result1 "boxPrimus33" }
+		  91 {set result1 "boxOptimus25" }
+		  92 {set result1 "boxLC575"; set result2 "gestaltMacLC575"}
+		  93 {set result1 "boxAladdin20" }
+		  94 {set result1 "boxQuadra605"; set result2 "gestaltMacQuadra605"}
+		  95 {set result1 "boxAladdin33" }
+		  96 {set result1 "boxMalcolm25" }
+		  97 {set result1 "boxMalcolm33" }
+		  98 {set result1 "boxSlimus25"; set result2 "gestaltMacQuadra630"}
+		  99 {set result1 "boxSlimus33"; set result2 "gestaltMacLC580"}
+		 100 {set result1 "boxPDM66WLCD"; set result2 "gestaltPowerMac6100_66"}
+		 101 {set result1 "boxPDM80WLCD" }
+		 102 {set result1 "boxYeagerG"; set result2 "gestaltPowerBookDuo280"}
+		 103 {set result1 "boxYeagerC"; set result2 "gestaltPowerBookDuo280c"}
+		 104 {set result1 "boxRiscQuadra900"; set result2 "gestaltPowerMacLC475"}
+		 105 {set result1 "boxRiscQuadra950"; set result2 "gestaltPowerMacLC575"}
+		 106 {set result1 "boxRiscCentris610"; set result2 "gestaltPowerMacQuadra630"}
+		 107 {set result1 "boxRiscQuadra800" }
+		 108 {set result1 "boxRiscQuadra610"; set result2 "gestaltPowerMac7200"}
+		 109 {set result1 "boxRiscQuadra650"; set result2 "gestaltPowerMac7300"}
+		 110 {set result1 "boxRiscTempest" }
+		 111 {set result1 "boxPDM50L" }
+		 112 {set result1 "boxPDM66L"; set result2 "gestaltPowerMac7100_66"}
+		 113 {set result1 "boxPDM80L" }
+		 114 {set result1 "boxBlackbirdBFD" }
+		 115 {set result1 "boxJedi"; set result2 "gestaltPowerBook150"}
+		 116 {set result1 "boxSTPQ700"; set result2 "gestaltPowerMacQuadra700"}
+		 117 {set result1 "boxSTPQ900"; set result2 "gestaltPowerMacQuadra900"}
+		 118 {set result1 "boxSTPQ950"; set result2 "gestaltPowerMacQuadra950"}
+		 119 {set result1 "boxSTPC610"; set result2 "gestaltPowerMacCentris610"}
+		 120 {set result1 "boxSTPC650"; set result2 "gestaltPowerMacCentris650"}
+		 121 {set result1 "boxSTPQ610"; set result2 "gestaltPowerMacQuadra610"}
+		 122 {set result1 "boxSTPQ650"; set result2 "gestaltPowerMacQuadra650"}
+		 123 {set result1 "boxSTPQ800"; set result2 "gestaltPowerMacQuadra800"}
+		 124 {set result1 "boxAJ"; set result2 "gestaltPowerBookDuo2300"}
+		 125 {set result1 "boxAJ80" }
+		 126 {set result1 "boxMalcolmBB"; set result2 "gestaltPowerBook500PPCUpgrade"}
+		 127 {set result1 "boxMalcolmBB80" }
+		 128 {set result1 "boxM2"; set result2 "gestaltPowerBook5300"}
+		 129 {set result1 "boxM280" }
+		 130 {set result1 "boxSoftmacHP" }
+		 131 {set result1 "boxSoftmacIBM" }
+		 132 {set result1 "boxSoftmacAUX" }
+		 133 {set result1 "boxExtended" }
+
+		# 253(-3) + 6 = 259
+		 259 {set result1 "boxUnknown" }
+
+		 306 {set result2 "gestaltPowerBook3400" }
+		 307 {set result2 "gestaltPowerBook2400" }
+		 310 {set result2 "gestaltPowerBook1400" }
+		 312 {set result2 "gestaltPowerBookG3Series" }
+		 313 {set result2 "gestaltPowerBookG3" }
+		 314 {set result2 "gestaltPowerBookG3Series2" }
+		 406 {set result2 "gestaltPowerMacNewWorld" }
+		 510 {set result2 "gestaltPowerMacG3" }
+		 512 {set result2 "gestaltPowerMac5500" }
+		 513 {set result2 "gestaltPowerMac6500" }
+		 514 {set result2 "gestaltPowerMac4400_160" }
+		 515 {set result2 "gestaltPowerMac4400" }
+		1206 {set result2 "gestaltMacOSCompatibility" }
+		default { set result2 "Unknown box" }
 	}
-	return [format "%s (%d)" $result $input]
+	set result ""
+	if {$result1 != ""} {
+		set result [format "%s (%d)" $result1 [expr ($input - 6) & 0xFF]]
+	}
+	if {$result2 != ""} {
+		if {$result1 != ""} {
+			set result "$result, "
+		}
+		set result [format "%s%s (%d)" $result $result2 $input]
+	}
+
+	return $result
 }
 
 proc decoder_kind {input} {
@@ -4238,7 +4277,7 @@ proc parse_product_info {infoptr bestSize calcSize} {
 		uint16 "HwCfgWord"
 	}
 
-	set ProductKind [uint8]
+	set ProductKind [int8]
 	move -1
 	entry "ProductKind" [product_kind $ProductKind] 1
 	move 1
@@ -4350,9 +4389,40 @@ proc parse_product_info {infoptr bestSize calcSize} {
 		move 2
 	}
 
+	if {$bestSize != 88 || $calcSize != 86} {
+		uint16 "padding"
+	}
+
+	if {$bestSize >= 92} {
+		set IconInfoPtr [offset32section "IconInfoPtr" $infoptr]
+		if {$IconInfoPtr != 0} {
+			parse_IconInfo $IconInfoPtr
+		}
+	}
+
+	if {$bestSize >= 100} {
+		set ProductKind2 [uint32]
+		move -4
+		entry "ProductKind (extended)" [product_kind $ProductKind2] 4
+		move 4
+		# 100
+	}
+	if {$bestSize >= 104} {
+		uint32 -hex "Unknown2"
+		# 104
+	}
+	if {$bestSize >= 108} {
+		uint32 -hex "Unknown3"
+		# 108
+	}
+
+	if {$ProductKind == 127 && $bestSize >= 100} {
+		set ProductKind $ProductKind2
+	}
+
 	set product [productinfo_name $ProductKind $DecoderKind $VIAIdMask $VIAIdMatch $CPUIDValue]
 	if {$product == ""} {
-		if {$ProductKind != 253} {
+		if {$ProductKind != -3} {
 			set product [product_kind $ProductKind]
 		}
 		if {$product_from_via != ""} {
@@ -4370,30 +4440,6 @@ proc parse_product_info {infoptr bestSize calcSize} {
 	}
 	if {$product != ""} {
 		sectionname "$product (size: $calcSize)"
-	}
-
-	if {$bestSize != 88 || $calcSize != 86} {
-		uint16 "padding"
-	}
-
-	if {$bestSize >= 92} {
-		set IconInfoPtr [offset32section "IconInfoPtr" $infoptr]
-		if {$IconInfoPtr != 0} {
-			parse_IconInfo $IconInfoPtr
-		}
-	}
-
-	if {$bestSize >= 100} {
-		uint32 -hex "Unknown1"
-		# 100
-	}
-	if {$bestSize >= 104} {
-		uint32 -hex "Unknown2"
-		# 104
-	}
-	if {$bestSize >= 108} {
-		uint32 -hex "Unknown3"
-		# 108
 	}
 
 	endsection
