@@ -2110,7 +2110,13 @@ proc product_kind {input} {
 	return $result
 }
 
-proc decoder_kind {input} {
+proc decoder_kind {input bestSize rom_version_release} {
+	set numoffset 0
+#	if {$rom_version_release <= 0x007c21f5 && $input >= 13} {
+#		# skip YMCADecoder
+#		set numoffset 1
+#		incr input
+#	}
 	switch $input {
 		 0 { set result "UnknownDecoder" }
 		 1 { set result "MacPALDecoder" }
@@ -2125,14 +2131,14 @@ proc decoder_kind {input} {
 		10 { set result "MSCDecoder" }
 		11 { set result "SonoraDecoder" }
 		12 { set result "NiagraDecoder" }
-		13 { set result "YMCADecoder" }
+		13 { if {$bestSize >= 88} { set result "YMCADecoder" } else { set result "djMEMCDecoder" } }
 		14 { set result "djMEMCDecoder" }
 		15 { set result "HMCDecoder" }
 		16 { set result "PrattDecoder" }
 		17 { set result "HHeadDecoder" }
 		default { set result "Unknown" }
 	}
-	return [format "%s (%d)" $result $input]
+	return [format "%s (%d)" $result [expr $input - $numoffset]]
 }
 
 proc rom85_word {input} {
@@ -2564,7 +2570,7 @@ proc getpixels {num} {
 	return $res
 }
 
-proc parse_decoder_info {decodertableptr bestSize} {
+proc parse_decoder_info {decodertableptr bestSize rom_version_release} {
 	set returnpos [pos]
 
 	set numFlagWords 1
@@ -2598,7 +2604,7 @@ proc parse_decoder_info {decodertableptr bestSize} {
 
 	set AddrMap [uint8]
 	move -1
-	set decoder_name [decoder_kind $AddrMap]
+	set decoder_name [decoder_kind $AddrMap $bestSize $rom_version_release]
 	entry "AddrMap" $decoder_name 1
 	sectionname [format "DecoderInfoPtr -> DecoderInfo (%s)" $decoder_name]
 	move 1
@@ -4226,7 +4232,7 @@ proc parse_IconInfo {infoptr} {
 
 set first_productinfo 0x7FFFFFFF
 
-proc parse_product_info {infoptr bestSize calcSize} {
+proc parse_product_info {infoptr bestSize calcSize rom_version_release} {
 	set returnpos [pos]
 	goto $infoptr
 
@@ -4237,7 +4243,7 @@ proc parse_product_info {infoptr bestSize calcSize} {
 
 	set DecoderInfoPtr [offset32section "DecoderInfoPtr -> FirstBaseAddr" $infoptr]
 	if {$DecoderInfoPtr != 0} {
-		parse_decoder_info $DecoderInfoPtr $bestSize
+		parse_decoder_info $DecoderInfoPtr $bestSize $rom_version_release
 	}
 
 	set RamInfoPtr [offset32section "RamInfoPtr -> RamBankInfo" $infoptr]
@@ -4284,7 +4290,7 @@ proc parse_product_info {infoptr bestSize calcSize} {
 
 	set DecoderKind [uint8]
 	move -1
-	entry "DecoderKind" [decoder_kind $DecoderKind] 1
+	entry "DecoderKind" [decoder_kind $DecoderKind $bestSize $rom_version_release] 1
 	move 1
 
 	set Rom85Word [uint16]
@@ -4446,7 +4452,7 @@ proc parse_product_info {infoptr bestSize calcSize} {
 	goto $returnpos
 }
 
-proc parse_univ_tables {univtables} {
+proc parse_univ_tables {univtables rom_version_release} {
 	if {$univtables > 0 && $univtables < [len]} {
 		goto $univtables
 		section -collapsed "Universal Tables" {
@@ -4518,7 +4524,7 @@ proc parse_univ_tables {univtables} {
 						} else {
 							set calcSize 0
 						}
-						parse_product_info $addr $bestSize $calcSize
+						parse_product_info $addr $bestSize $calcSize $rom_version_release
 					}
 				}
 			}
@@ -4532,7 +4538,7 @@ proc parse_univ_tables {univtables} {
 						} else {
 							set calcSize 0
 						}
-						parse_product_info $addr $bestSize $calcSize
+						parse_product_info $addr $bestSize $calcSize $rom_version_release
 					}
 				}
 			}
@@ -4541,7 +4547,7 @@ proc parse_univ_tables {univtables} {
 				while {!$done} {
 					set addr [offset32section "DecoderInfo" [pos]]
 					if {$addr != 0} {
-						set done [parse_decoder_info $addr $bestSize]
+						set done [parse_decoder_info $addr $bestSize $rom_version_release]
 					} else {
 						set done true
 					}
@@ -4758,6 +4764,7 @@ if {$dir_start != 0} {
 		set minor_ver [uint8]
 		move -1
 		entry "ROM Version" [rom_version $minor_ver] 1
+		set rom_release 0
 		if {[universal_rom $machine]} {
 			goto 18
 			set rom_release [uint16]
@@ -4768,6 +4775,8 @@ if {$dir_start != 0} {
 				uint16 "Sub Release"
 			}
 		}
+
+		set rom_version_release [expr ($minor_ver << 16) | $rom_release]
 
 		# Read the date from old-style ROMs
 		# No DeclROM and versions between 7.5 and 7.11
@@ -5033,7 +5042,7 @@ if {$dir_start != 0} {
 
 		endsection
 
-		parse_univ_tables $univtables
+		parse_univ_tables $univtables $rom_version_release
 
 		if {[universal_rom $machine]} {
 			goto $resource_data_offset
