@@ -1862,7 +1862,7 @@ proc productinfo_name {boxnumber DecoderKind viamask viaid cpuid} {
 	} elseif { $boxnumber ==  76 && $cpuid == 0x3202} { set result "InfoRiscQuadra610"
 	} elseif { $boxnumber ==  76 && $cpuid == 0x3203} { set result "InfoRiscQuadra650"
 	} elseif { $boxnumber ==  76 && $cpuid == 0x3204} { set result "InfoRiscCentris610"
-	} elseif { $boxnumber ==  97 } { set result "InfoYeager"
+	} elseif { $boxnumber ==  97 } { set result "InfoYeager (PowerBook Duo 280)"
 	} elseif { $boxnumber ==  98 } { set result "InfoRiscQuadra900"
 	} elseif { $boxnumber ==  99 } { set result "InfoRiscQuadra950"
 	} elseif { $boxnumber == 106 } { set result "InfoPDMCarlSagan"
@@ -1895,7 +1895,7 @@ proc product_cpuid {input} {
 	} elseif { $input == 0x1000 } { set result "PowerBook Duo 280c (cpuIDPortable|cpuIDinReg|0)"
 	} elseif { $input == 0x1002 } { set result "PowerBook Duo 270c (cpuIDPortable|cpuIDinReg|2)"
 	} elseif { $input == 0x1004 } { set result "PowerBook Duo 210 (cpuIDPortable|cpuIDinReg|4)"
-	} elseif { $input == 0x1005 } { set result "PowerBook Duo 230 (cpuIDPortable|cpuIDinReg|5)"
+	} elseif { $input == 0x1005 } { set result "PowerBook Duo 230/250 (cpuIDPortable|cpuIDinReg|5)"
 	} elseif { $input == 0x1006 } { set result "PowerBook Duo 235 (cpuIDPortable|cpuIDinReg|6)"
 	} elseif { $input == 0x1808 } { set result "PowerBook 520/540 (cpuIDPortable|cpuIDinBoard|8)"
 	} elseif { $input == 0x1809 } { set result "PowerBook Duo 2300 (cpuIDPortable|cpuIDinBoard|9)"
@@ -1909,6 +1909,7 @@ proc product_cpuid {input} {
 	} elseif { $input == 0x2830 } { set result "Quadra 660/840 (cpuIDHiEnd|cpuIDinMMC|\$30)"
 	} elseif { $input == 0x2BAD } { set result "Quadra/Centris 610/650/800 (cpuIDHiEnd|cpuIDinVIA|\$3AD)"
 	} elseif { $input == 0x3010 } { set result "PowerMac 6100 (cpuIDRISC|\$3010)"
+	} elseif { $input == 0x3001 } { set result "PowerMac 7200 (cpuIDRISC|\$3001)"
 	} elseif { $input == 0x3011 } { set result "PDM (cpuIDRISC|cpuIDinReg|\$3011)"
 	} elseif { $input == 0x3012 } { set result "PowerMac 7100 (cpuIDRISC|cpuIDinReg|\$3012)"
 	} elseif { $input == 0x3013 } { set result "PowerMac 8100 (cpuIDRISC|cpuIDinReg|\$3013)"
@@ -1917,6 +1918,18 @@ proc product_cpuid {input} {
 	} elseif { $input == 0x3022 } { set result "PowerMac 7600/8600/9600 (cpuIDRISC|\$3022)"
 	} elseif { $input == 0x3025 } { set result "PowerBook 2400 (cpuIDRISC|\$3025)"
 	} elseif { $input == 0x3026 } { set result "PowerBook 3400 (cpuIDRISC|\$3026)"
+
+	} elseif { $input == 0X302B } { set result "Zanzibar (cpuIDRISC|\$302B)"
+	} elseif { $input == 0X302C } { set result "Zanzibar with SuperDrive (cpuIDRISC|\$302C)"
+	} elseif { $input == 0X302D } { set result "Zanzibar with hard power (cpuIDRISC|\$302D)"
+	} elseif { $input == 0X302E } { set result "Jumanji (cpuIDRISC|\$302E)"
+	} elseif { $input == 0X302F } { set result "Zanzibar with SuperDrive and hard power (cpuIDRISC|\$302F)"
+
+	} elseif { $input == 0X3030 } { set result "Common Hardware Reference Platform (cpuIDRISC|\$3030)"
+
+	} elseif { $input == 0X3031 } { set result "Zanzibar with Auto eject (cpuIDRISC|\$3031)"
+	} elseif { $input == 0X3032 } { set result "Zanzibar with Auto eject and hard power (cpuIDRISC|\$3032)"
+
 	} elseif { $input == 0x3041 } { set result "PowerMac G3 “Beige” (cpuIDRISC|\$3041)"
 	} elseif { $input == 0x3042 } { set result "PowerBook G3 “WallStreet” (cpuIDRISC|\$3042)"
 	} elseif { $input == 0x3046 } { set result "PowerBook G3 “WallStreet” (cpuIDRISC|\$3046)"
@@ -4190,6 +4203,16 @@ proc parse_ImmgPrim {infoptr} {
 	goto $returnpos
 }
 
+proc parse_PCCardMgrVectorTable {infoptr} {
+	set returnpos [pos]
+	goto $infoptr
+	
+	uint32 -hex "Whatdis?"
+
+	endsection
+	goto $returnpos
+}
+
 proc icon {name} {
 	section $name {
 		for {set i 0} {$i < 32} {incr i} {
@@ -4414,11 +4437,15 @@ proc parse_product_info {infoptr bestSize calcSize rom_version_release} {
 		# 100
 	}
 	if {$bestSize >= 104} {
-		uint32 -hex "Unknown2"
+		set PCCardMgrVectorPtr [offset32section "PCCardMgr vector table ptr -> PCCardMgr vector table" $infoptr]
+		if {$PCCardMgrVectorPtr != 0} {
+			parse_PCCardMgrVectorTable $PCCardMgrVectorPtr
+		}
 		# 104
 	}
 	if {$bestSize >= 108} {
-		uint32 -hex "Unknown3"
+		uint8 -hex "Cold-start diagnostics test mask"
+		bytes 3 "Filler"
 		# 108
 	}
 
