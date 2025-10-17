@@ -5053,12 +5053,32 @@ if {$dir_start != 0} {
 		if {[universal_rom $machine]} {
 			goto 0x2e
 			uint8 "ROM Location Bit"
-			move 1
-			uint32 -hex "Checksum (Chunk 1)"
-			uint32 -hex "Checksum (Chunk 2)"
-			uint32 -hex "Checksum (Chunk 3)"
-			uint32 -hex "Checksum (Chunk 4)"
-			set rom_size [uint32 -hex "ROM Size"]
+		}
+
+		if {$minor_ver >= 0x76} {
+			goto 0x30
+			set ck0 [uint32]
+			set ck1 [uint32]
+			set ck2 [uint32]
+			set ck3 [uint32]
+			goto 0x30
+			if {$ck2 == 0 && $ck3 == 0} {
+				uint32 -hex "Checksum (Even bytes)"
+				uint32 -hex "Checksum (Odd bytes)"
+				bytes 8 "Checksum (zeros)"
+			} else {
+				uint32 -hex "Checksum (Chunk 1)"
+				uint32 -hex "Checksum (Chunk 2)"
+				uint32 -hex "Checksum (Chunk 3)"
+				uint32 -hex "Checksum (Chunk 4)"
+			}
+			if {$ForeignOS >= 0x44} {
+				set rom_size [uint32 -hex "ROM Size"]
+			}
+		}
+
+		if {[universal_rom $machine]} {
+			goto 0x44
 			if {$ForeignOS >= 72} {
 				offset32code "Erase Happy Mac Vector" 0
 			}
