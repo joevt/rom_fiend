@@ -4792,9 +4792,9 @@ if {$dir_start != 0} {
 		move -1
 		entry "ROM Version" [rom_version $minor_ver] 1
 		set rom_release 0
-		if {[universal_rom $machine]} {
-			goto 18
-			set rom_release [uint16]
+		goto 18
+		set rom_release [uint16]
+		if {$minor_ver >= 0x7A && $rom_release != 0} {
 			move -2
 			entry "Minor Version" [rom_release $rom_release] 2
 			if {$ForeignOS >= 78} {
