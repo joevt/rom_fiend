@@ -182,7 +182,7 @@ proc dooffsetsection {name origin size offset} {
 proc offset32section {name origin} {
 	set offset [uint32]
 	if {($origin == 0) && (
-		(($offset & 0xFFF00000) == 0x40800000) || (($offset & 0xFFF00000) == 0x400000)
+		(($offset & 0xFFF00000) == 0x40800000) || (($offset & 0xFFF00000) == 0x00400000) || (($offset & 0xFFF00000) == 0x00900000)
 	)} {
 		return [dooffsetsection $name 0 4 [expr $offset & 0xFFFFF]]
 	} else {
