@@ -2105,7 +2105,12 @@ proc product_kind {input} {
 		 512 {set result2 "gestaltPowerMac5500" }
 		 513 {set result2 "gestaltPowerMac6500" }
 		 514 {set result2 "gestaltPowerMac4400_160" }
+#		 514 {set result2 "gestaltLPX40GCRSoft?" }
 		 515 {set result2 "gestaltPowerMac4400" }
+		 516 {set result2 "gestaltLPX40MFMHard?" }
+		 517 {set result2 "gestaltLPX40GCRHard?" }
+		 518 {set result2 "gestaltLPX40AutoMFMSoft?" }
+		 519 {set result2 "gestaltLPX40AutoMFMHard?" }
 		1206 {set result2 "gestaltMacOSCompatibility" }
 		default { set result2 "Unknown box" }
 	}
