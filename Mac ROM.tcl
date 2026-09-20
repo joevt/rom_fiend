@@ -1953,9 +1953,10 @@ proc product_kind {input} {
 	# Convert input to gestalt numbers by adding 6
 	set input [expr $input + 6]
 
-	switch $input {
 #		   1 {set result2 "gestaltClassic" }
 #		   2 {set result2 "gestaltMacXL" }
+#		 514 {set result2 "gestaltLPX40GCRSoft?" }
+	switch $input {
 		   3 {
 			set result1 "boxUnknown"
 #			set result2 "gestaltMac512KE"
@@ -2091,8 +2092,10 @@ proc product_kind {input} {
 		 132 {set result1 "boxSoftmacAUX" }
 		 133 {set result1 "boxExtended" }
 
-		# 253(-3) + 6 = 259
-		 259 {set result1 "boxUnknown" }
+		 259 {
+			# 253(-3) + 6 = 259
+		 	set result1 "boxUnknown"
+		 }
 
 		 306 {set result2 "gestaltPowerBook3400" }
 		 307 {set result2 "gestaltPowerBook2400" }
@@ -2105,7 +2108,6 @@ proc product_kind {input} {
 		 512 {set result2 "gestaltPowerMac5500" }
 		 513 {set result2 "gestaltPowerMac6500" }
 		 514 {set result2 "gestaltPowerMac4400_160" }
-#		 514 {set result2 "gestaltLPX40GCRSoft?" }
 		 515 {set result2 "gestaltPowerMac4400" }
 		 516 {set result2 "gestaltLPX40MFMHard?" }
 		 517 {set result2 "gestaltLPX40GCRHard?" }
